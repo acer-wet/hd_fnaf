@@ -334,3 +334,178 @@
     };
 </script>
 </html>
+<!-- FNaF World Live Mod v5.2 -->
+<script>
+(function() {
+  const savedMods = JSON.parse(localStorage.getItem('fnafw_active_mods') || '{}');
+
+  const isFnafSaveKey = function(key) {
+    if (!key || key === 'fnafw_active_mods') return false;
+    const k = key.toLowerCase();
+    return k.includes('fnafw1') || k.includes('fnafw2') || k.includes('fnafw3') || k.includes('freddy1') || k.includes('freddy2') || k.includes('freddy3');
+  };
+
+  const getModEntries = function() {
+    const entries = {};
+    if (savedMods.unlock) {
+      for (let i = 1; i <= 48; i++) entries[i + 'have'] = '1';
+      for (let i = 1; i <= 21; i++) {
+        entries['c' + i] = '1';
+        entries['p' + i] = '1';
+      }
+    }
+    if (savedMods.lvl) {
+      for (let i = 1; i <= 48; i++) {
+        entries[i + 'lv'] = '99';
+        entries[i + 'xp'] = '0';
+      }
+    }
+    if (savedMods.tokens) {
+      entries['tokens'] = '99999';
+    }
+    if (savedMods.clock) {
+      for (let i = 1; i <= 5; i++) entries['clock' + i] = '1';
+      for (let i = 1; i <= 9; i++) entries['trophy' + i] = '1';
+      entries['portal'] = '1';
+    }
+    return entries;
+  };
+
+  // Preserves Clickteam HTML5's exact {@24} separator
+  const patchSaveData = function(raw) {
+    if (!raw || typeof raw !== 'string') return raw;
+    if (!Object.values(savedMods).some(Boolean)) return raw;
+
+    const delimiter = raw.includes('{@24}') ? '{@24}' : '\r\n';
+    const items = raw.split(delimiter);
+    const existingKeys = new Set();
+    const out = [];
+    const modEntries = getModEntries();
+
+    for (let i = 0; i < items.length; i++) {
+      const part = items[i];
+      if (part.includes('=') && !part.trim().startsWith('[')) {
+        const idx = part.indexOf('=');
+        const k = part.slice(0, idx).trim();
+        existingKeys.add(k);
+        if (Object.prototype.hasOwnProperty.call(modEntries, k)) {
+          out.push(k + '=' + modEntries[k]);
+          continue;
+        }
+      }
+      out.push(part);
+    }
+
+    const modKeys = Object.keys(modEntries);
+    for (let i = 0; i < modKeys.length; i++) {
+      const k = modKeys[i];
+      if (!existingKeys.has(k)) {
+        out.push(k + '=' + modEntries[k]);
+      }
+    }
+
+    return out.join(delimiter);
+  };
+
+  const applyToAllSlots = function() {
+    let patchedCount = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (isFnafSaveKey(key)) {
+        const current = localStorage.getItem(key);
+        if (current !== null) {
+          localStorage.setItem(key, patchSaveData(current));
+          patchedCount++;
+        }
+      }
+    }
+    return patchedCount;
+  };
+
+  // Apply saved mods right away before the game boots
+  applyToAllSlots();
+
+  // Live Game Speed multiplier
+  let speedMultiplier = 1;
+  const origRAF = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = function(callback) {
+    return origRAF(function(timestamp) {
+      callback(timestamp);
+      for (let i = 1; i < speedMultiplier; i++) {
+        callback(timestamp + i * 16);
+      }
+    });
+  };
+
+  function initMenu() {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;top:12px;right:12px;z-index:999999;font-family:sans-serif;font-size:12px';
+
+    const toggle = document.createElement('button');
+    toggle.innerText = 'Hide Mod Menu';
+    toggle.style.cssText = 'background:#e94560;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;font-weight:bold;float:right;margin-bottom:6px';
+    wrap.appendChild(toggle);
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'clear:both;width:285px;background:#1a1a2e;color:#fff;border:2px solid #e94560;border-radius:8px;padding:12px;box-shadow:0 4px 15px rgba(0,0,0,0.7)';
+    panel.innerHTML =
+      '<div style="font-weight:bold;font-size:14px;border-bottom:1px solid #444;padding-bottom:6px;margin-bottom:8px">FNaF World Live Mod v5.2</div>' +
+      '<div style="display:flex;flex-direction:column;gap:5px">' +
+        '<button id="m-unlock" style="padding:6px;background:' + (savedMods.unlock ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock All 48 Chars, Chips & Bytes ' + (savedMods.unlock ? '(ON)' : '') + '</button>' +
+        '<button id="m-lvl" style="padding:6px;background:' + (savedMods.lvl ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Max Party Level (Level 100) ' + (savedMods.lvl ? '(ON)' : '') + '</button>' +
+        '<button id="m-tokens" style="padding:6px;background:' + (savedMods.tokens ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">99,999 Faz-Tokens ' + (savedMods.tokens ? '(ON)' : '') + '</button>' +
+        '<button id="m-clock" style="padding:6px;background:' + (savedMods.clock ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock Clocks & All Trophies ' + (savedMods.clock ? '(ON)' : '') + '</button>' +
+        '<button id="m-speed" style="padding:6px;background:#533483;color:#fff;border:1px solid #666;cursor:pointer;border-radius:4px">Instant Speed Hack: 1x (Normal)</button>' +
+        '<button id="m-inspect" style="padding:5px;background:#222;color:#aaa;border:1px solid #444;cursor:pointer;border-radius:4px;font-size:11px">Scan & View All Save Keys</button>' +
+      '</div>' +
+      '<div id="m-msg" style="margin-top:8px;color:#4ecca3;font-size:11px;line-height:1.35;max-height:110px;overflow-y:auto;word-break:break-all">Ready! Start a save once, then toggle cheats ON while on the Title Screen.</div>';
+    wrap.appendChild(panel);
+    document.body.appendChild(wrap);
+
+    toggle.onclick = function() {
+      const hidden = panel.style.display === 'none';
+      panel.style.display = hidden ? 'block' : 'none';
+      toggle.innerText = hidden ? 'Hide Mod Menu' : 'Show Mod Menu';
+    };
+
+    const toggleMod = function(modKey, btnId, label) {
+      savedMods[modKey] = !savedMods[modKey];
+      localStorage.setItem('fnafw_active_mods', JSON.stringify(savedMods));
+      const btn = document.getElementById(btnId);
+      btn.style.background = savedMods[modKey] ? '#2e7d32' : '#0f3460';
+      btn.innerText = label + (savedMods[modKey] ? ' (ON)' : '');
+      const count = applyToAllSlots();
+      document.getElementById('m-msg').innerText = savedMods[modKey]
+        ? label + ' ON! Patched ' + count + ' save file(s). Click Start -> Slot 1!'
+        : label + ' turned OFF.';
+    };
+
+    document.getElementById('m-unlock').onclick = function() { toggleMod('unlock', 'm-unlock', 'Unlock All 48 Chars, Chips & Bytes'); };
+    document.getElementById('m-lvl').onclick = function() { toggleMod('lvl', 'm-lvl', 'Max Party Level (Level 100)'); };
+    document.getElementById('m-tokens').onclick = function() { toggleMod('tokens', 'm-tokens', '99,999 Faz-Tokens'); };
+    document.getElementById('m-clock').onclick = function() { toggleMod('clock', 'm-clock', 'Unlock Clocks & All Trophies'); };
+
+    document.getElementById('m-speed').onclick = function() {
+      speedMultiplier = speedMultiplier === 1 ? 3 : speedMultiplier === 3 ? 5 : 1;
+      document.getElementById('m-speed').innerText = 'Instant Speed Hack: ' + speedMultiplier + 'x';
+      document.getElementById('m-msg').innerText = 'Game speed set to ' + speedMultiplier + 'x immediately!';
+    };
+
+    document.getElementById('m-inspect').onclick = function() {
+      const allKeys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        allKeys.push(localStorage.key(i));
+      }
+      const match = allKeys.find(isFnafSaveKey);
+      const preview = match ? localStorage.getItem(match).slice(0, 220) : 'No save file created yet';
+      document.getElementById('m-msg').innerText = 'Keys found: [' + allKeys.join(', ') + ']\n---\n' + preview;
+    };
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMenu);
+  } else {
+    initMenu();
+  }
+})();
+</script>
