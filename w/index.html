@@ -334,7 +334,7 @@
     };
 </script>
 </html>
-<!-- FNaF World Live Mod v5.4 -->
+<!-- FNaF World Live Mod v5.5 (Anti-Freeze Party Fix) -->
 <script>
 (function() {
   const savedMods = JSON.parse(localStorage.getItem('fnafw_active_mods') || '{}');
@@ -345,43 +345,40 @@
     return k.includes('fnafw1') || k.includes('fnafw2') || k.includes('fnafw3') || k.includes('freddy1') || k.includes('freddy2') || k.includes('freddy3');
   };
 
+  // Keys from v5.4 that can cause Clickteam Party Screen loops — strip them cleanly
+  const isBadLegacyKey = function(k) {
+    return /^(have\d+|u\d+|chip\d+|byte\d+|lv\d+|xp\d+)$/.test(k);
+  };
+
   const getModEntries = function() {
     const entries = {};
 
-    // 1. Characters Only
+    // 1. Official FNaF World Character Unlock Keys (1have through 48have)
     if (savedMods.chars) {
       for (let i = 1; i <= 48; i++) {
         entries[i + 'have'] = '1';
-        entries['have' + i] = '1';
-      }
-      for (let i = 1; i <= 8; i++) {
-        entries['u' + i] = '1';
       }
     }
 
-    // 2. Chips Only
+    // 2. Official Chip Keys (c1 through c21)
     if (savedMods.chips) {
       for (let i = 1; i <= 21; i++) {
         entries['c' + i] = '1';
-        entries['chip' + i] = '1';
       }
     }
 
-    // 3. Bytes Only
+    // 3. Official Byte Keys (p1 through p21)
     if (savedMods.bytes) {
       for (let i = 1; i <= 21; i++) {
         entries['p' + i] = '1';
-        entries['byte' + i] = '1';
       }
     }
 
-    // 4. Max Party Level
+    // 4. Max Party Level (1lv through 48lv)
     if (savedMods.lvl) {
       for (let i = 1; i <= 48; i++) {
         entries[i + 'lv'] = '100';
-        entries['lv' + i] = '100';
         entries[i + 'xp'] = '0';
-        entries['xp' + i] = '0';
       }
     }
 
@@ -402,7 +399,6 @@
 
   const patchSaveData = function(raw) {
     if (!raw || typeof raw !== 'string') return raw;
-    if (!Object.values(savedMods).some(Boolean)) return raw;
 
     const delimiter = raw.includes('{@24}') ? '{@24}' : '\r\n';
     const items = raw.split(delimiter);
@@ -412,14 +408,27 @@
 
     for (let i = 0; i < items.length; i++) {
       const part = items[i];
+      if (!part) continue;
       if (part.includes('=') && !part.trim().startsWith('[')) {
         const idx = part.indexOf('=');
         const k = part.slice(0, idx).trim();
+        let v = part.slice(idx + 1).trim();
+
+        // Remove duplicate keys that freeze Clickteam's Party frame
+        if (isBadLegacyKey(k)) continue;
+
+        // Prevent empty or broken party slots (s1..s8)
+        if (/^s[1-8]$/.test(k) && (!v || v === '0' || parseInt(v, 10) > 48)) {
+          v = k.slice(1);
+        }
+
         existingKeys.add(k);
         if (Object.prototype.hasOwnProperty.call(modEntries, k)) {
           out.push(k + '=' + modEntries[k]);
           continue;
         }
+        out.push(k + '=' + v);
+        continue;
       }
       out.push(part);
     }
@@ -452,13 +461,23 @@
 
   applyToAllSlots();
 
+  // Safe Speed Multiplier (throttled so Clickteam screen fades never freeze)
   let speedMultiplier = 1;
+  let lastTick = 0;
   const origRAF = window.requestAnimationFrame.bind(window);
   window.requestAnimationFrame = function(callback) {
     return origRAF(function(timestamp) {
-      callback(timestamp);
-      for (let i = 1; i < speedMultiplier; i++) {
-        callback(timestamp + i * 16);
+      if (speedMultiplier === 1) {
+        callback(timestamp);
+        return;
+      }
+      if (timestamp - lastTick >= 16) {
+        lastTick = timestamp;
+        for (let i = 0; i < speedMultiplier; i++) {
+          callback(timestamp + i * 16);
+        }
+      } else {
+        callback(timestamp);
       }
     });
   };
@@ -475,7 +494,7 @@
     const panel = document.createElement('div');
     panel.style.cssText = 'clear:both;width:285px;background:#1a1a2e;color:#fff;border:2px solid #e94560;border-radius:8px;padding:12px;box-shadow:0 4px 15px rgba(0,0,0,0.7)';
     panel.innerHTML =
-      '<div style="font-weight:bold;font-size:14px;border-bottom:1px solid #444;padding-bottom:6px;margin-bottom:8px">FNaF World Live Mod v5.4</div>' +
+      '<div style="font-weight:bold;font-size:14px;border-bottom:1px solid #444;padding-bottom:6px;margin-bottom:8px">FNaF World Live Mod v5.5</div>' +
       '<div style="display:flex;flex-direction:column;gap:5px">' +
         '<button id="m-chars" style="padding:6px;background:' + (savedMods.chars ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock All 48 Characters ' + (savedMods.chars ? '(ON)' : '') + '</button>' +
         '<button id="m-chips" style="padding:6px;background:' + (savedMods.chips ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock All Chips ' + (savedMods.chips ? '(ON)' : '') + '</button>' +
@@ -484,9 +503,10 @@
         '<button id="m-tokens" style="padding:6px;background:' + (savedMods.tokens ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">99,999 Faz-Tokens ' + (savedMods.tokens ? '(ON)' : '') + '</button>' +
         '<button id="m-clock" style="padding:6px;background:' + (savedMods.clock ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock Clocks & All Trophies ' + (savedMods.clock ? '(ON)' : '') + '</button>' +
         '<button id="m-speed" style="padding:6px;background:#533483;color:#fff;border:1px solid #666;cursor:pointer;border-radius:4px">Instant Speed Hack: 1x (Normal)</button>' +
+        '<button id="m-fix" style="padding:5px;background:#8b2635;color:#fff;border:1px solid #e94560;cursor:pointer;border-radius:4px;font-size:11px">Clean Save & Fix Party Freeze</button>' +
         '<button id="m-inspect" style="padding:5px;background:#222;color:#aaa;border:1px solid #444;cursor:pointer;border-radius:4px;font-size:11px">Scan & View All Save Keys</button>' +
       '</div>' +
-      '<div id="m-msg" style="margin-top:8px;color:#4ecca3;font-size:11px;line-height:1.35;max-height:110px;overflow-y:auto;word-break:break-all">Ready! Toggle cheats ON while on the Title Screen, then click Start -> Slot 1.</div>';
+      '<div id="m-msg" style="margin-top:8px;color:#4ecca3;font-size:11px;line-height:1.35;max-height:110px;overflow-y:auto;word-break:break-all">Ready! Keep Speed Hack at 1x on the Party screen to prevent transition locks.</div>';
     wrap.appendChild(panel);
     document.body.appendChild(wrap);
 
@@ -516,27 +536,32 @@
     document.getElementById('m-clock').onclick = function() { toggleMod('clock', 'm-clock', 'Unlock Clocks & All Trophies'); };
 
     document.getElementById('m-speed').onclick = function() {
-      speedMultiplier = speedMultiplier === 1 ? 3 : speedMultiplier === 3 ? 5 : 1;
+      speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 3 : 1;
       document.getElementById('m-speed').innerText = 'Instant Speed Hack: ' + speedMultiplier + 'x';
-      document.getElementById('m-msg').innerText = 'Game speed set to ' + speedMultiplier + 'x immediately!';
+      document.getElementById('m-msg').innerText = 'Game speed set to ' + speedMultiplier + 'x (set back to 1x before opening Party menu).';
+    };
+
+    document.getElementById('m-fix').onclick = function() {
+      speedMultiplier = 1;
+      document.getElementById('m-speed').innerText = 'Instant Speed Hack: 1x (Normal)';
+      const count = applyToAllSlots();
+      document.getElementById('m-msg').innerText = 'Cleaned ' + count + ' save file(s) and reset speed to 1x! Press F2 to reload the title screen cleanly.';
     };
 
     document.getElementById('m-inspect').onclick = function() {
       const allKeys = [];
       for (let i = 0; i < localStorage.length; i++) {
-        allKeys.push(localStorage.key(i));
-      }
-      const match = allKeys.find(isFnafSaveKey);
-      const preview = match ? localStorage.getItem(match) : 'No save file created yet';
-      document.getElementById('m-msg').innerText = 'Keys: [' + allKeys.join(', ') + ']\n---\n' + preview;
-    };
-  }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMenu);
-  } else {
-    initMenu();
-  }
+allKeys.push(localStorage.key(i));
+}
+const match = allKeys.find(isFnafSaveKey);
+const preview = match ? localStorage.getItem(match) : 'No save file created yet';
+document.getElementById('m-msg').innerText = 'Keys: [' + allKeys.join(', ') + ']\n---\n' + preview;
+};
+}
+if (document.readyState === 'loading') {
+document.addEventListener('DOMContentLoaded', initMenu);
+} else {
+initMenu();
+}
 })();
-</script>
-
