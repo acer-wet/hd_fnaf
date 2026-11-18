@@ -334,234 +334,249 @@
     };
 </script>
 </html>
-<!-- FNaF World Live Mod v5.5 (Anti-Freeze Party Fix) -->
+<!-- FNAF WORLD HTML5 MOD MENU V7 (LIVE MEMORY INJECTION - NO REFRESH) -->
+<div id="fnaf-mod-menu" style="position:fixed; top:10px; right:10px; width:275px; background:#14141f; color:#fff; border:2px solid #00e676; border-radius:8px; padding:12px; font-family:sans-serif; z-index:999999; box-shadow:0 4px 15px rgba(0,0,0,0.8); font-size:13px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:6px; margin-bottom:10px;">
+    <strong style="color:#00e676; font-size:14px;">FNaF World Live Mod v7</strong>
+    <button onclick="toggleModMenu()" style="background:#333; color:#fff; border:none; border-radius:4px; padding:2px 8px; cursor:pointer;">_</button>
+  </div>
+
+  <div id="fnaf-mod-body">
+    <div style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+      <label>Active Slot:</label>
+      <select id="mod-slot" style="background:#222; color:#fff; border:1px solid #555; padding:2px 6px; border-radius:4px;">
+        <option value="1">Slot 1</option>
+        <option value="2">Slot 2</option>
+        <option value="3">Slot 3</option>
+      </select>
+    </div>
+
+    <!-- Separated Live Buttons -->
+    <button onclick="unlockAllCharacters()" style="width:100%; margin-bottom:6px; padding:7px; background:#1565c0; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
+      Unlock All Characters (Anti-Freeze)
+    </button>
+
+    <button onclick="unlockChipsAndBytes()" style="width:100%; margin-bottom:6px; padding:7px; background:#5e35b1; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
+      Unlock All Chips & Bytes
+    </button>
+
+    <button onclick="unlockAllTrophies()" style="width:100%; margin-bottom:6px; padding:7px; background:#ef6c00; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
+      Unlock All Trophies
+    </button>
+
+    <button onclick="unlockClockEnding()" style="width:100%; margin-bottom:10px; padding:7px; background:#2e7d32; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
+      Unlock Clock Ending (All 5 Clocks)
+    </button>
+
+    <!-- Live Warp Section -->
+    <div style="border-top:1px solid #333; padding-top:8px; margin-bottom:8px;">
+      <label style="display:block; margin-bottom:4px; color:#aaa;">Instant Area Warp:</label>
+      <div style="display:flex; gap:5px;">
+        <select id="warp-location" style="flex:1; background:#222; color:#fff; border:1px solid #555; padding:4px; border-radius:4px;">
+          <option value="1">Fazbear Hills</option>
+          <option value="2">Choppy's Woods</option>
+          <option value="3">Dusting Fields</option>
+          <option value="4">Lilygear Lake</option>
+          <option value="5">Blacktomb Yard</option>
+          <option value="6">Deep-Metal Mine</option>
+          <option value="7">Pinwheel Circus</option>
+        </select>
+        <button onclick="warpPlayer()" style="padding:4px 10px; background:#d84315; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
+          Warp
+        </button>
+      </div>
+    </div>
+
+    <div id="mod-status" style="font-size:11px; color:#00e676; min-height:16px; text-align:center;">
+      Scanning Clickteam Runtime...
+    </div>
+  </div>
+</div>
+
 <script>
 (function() {
-  const savedMods = JSON.parse(localStorage.getItem('fnafw_active_mods') || '{}');
+  let activeRuntime = null;
+  let liveIniObjects = [];
 
-  const isFnafSaveKey = function(key) {
-    if (!key || key === 'fnafw_active_mods') return false;
-    const k = key.toLowerCase();
-    return k.includes('fnafw1') || k.includes('fnafw2') || k.includes('fnafw3') || k.includes('freddy1') || k.includes('freddy2') || k.includes('freddy3');
-  };
-
-  // Keys from v5.4 that can cause Clickteam Party Screen loops — strip them cleanly
-  const isBadLegacyKey = function(k) {
-    return /^(have\d+|u\d+|chip\d+|byte\d+|lv\d+|xp\d+)$/.test(k);
-  };
-
-  const getModEntries = function() {
-    const entries = {};
-
-    // 1. Official FNaF World Character Unlock Keys (1have through 48have)
-    if (savedMods.chars) {
-      for (let i = 1; i <= 48; i++) {
-        entries[i + 'have'] = '1';
+  // 1. HOOK INTO CLICKTEAM FUSION HTML5 RUNTIME IN REAL TIME
+  const hookInterval = setInterval(() => {
+    // Clickteam HTML5 exposes the canvas runtime via window.Runtime or Canvas objects
+    if (window.Runtime && window.Runtime.rhApp) {
+      activeRuntime = window.Runtime;
+    } else {
+      // Fallback scanner to grab CRunApp instance directly from global scope or canvas
+      for (let key in window) {
+        try {
+          if (window[key] && window[key].rhApp && window[key].rhApp.gValues) {
+            activeRuntime = window[key];
+            break;
+          }
+        } catch (e) {}
       }
     }
 
-    // 2. Official Chip Keys (c1 through c21)
-    if (savedMods.chips) {
-      for (let i = 1; i <= 21; i++) {
-        entries['c' + i] = '1';
+    if (activeRuntime && activeRuntime.rhApp) {
+      findLiveIniExtensions(activeRuntime.rhApp);
+      document.getElementById('mod-status').textContent = "Live Runtime Hooked! Ready.";
+      clearInterval(hookInterval);
+    }
+  }, 500);
+
+  // Locate Clickteam's cached INI objects in active RAM so changes apply immediately without reload
+  function findLiveIniExtensions(app) {
+    liveIniObjects = [];
+    if (!app.rhObjectList) return;
+    for (let i = 0; i < app.rhObjectList.length; i++) {
+      const obj = app.rhObjectList[i];
+      if (obj && obj.roc && obj.ext && (obj.ext.ini || obj.ext.items || typeof obj.ext.setValue === 'function')) {
+        liveIniObjects.push(obj.ext);
       }
     }
+  }
 
-    // 3. Official Byte Keys (p1 through p21)
-    if (savedMods.bytes) {
-      for (let i = 1; i <= 21; i++) {
-        entries['p' + i] = '1';
-      }
-    }
-
-    // 4. Max Party Level (1lv through 48lv)
-    if (savedMods.lvl) {
-      for (let i = 1; i <= 48; i++) {
-        entries[i + 'lv'] = '100';
-        entries[i + 'xp'] = '0';
-      }
-    }
-
-    // 5. Faz-Tokens
-    if (savedMods.tokens) {
-      entries['tokens'] = '99999';
-    }
-
-    // 6. Clocks & Trophies
-    if (savedMods.clock) {
-      for (let i = 1; i <= 5; i++) entries['clock' + i] = '1';
-      for (let i = 1; i <= 9; i++) entries['trophy' + i] = '1';
-      entries['portal'] = '1';
-    }
-
-    return entries;
-  };
-
-  const patchSaveData = function(raw) {
-    if (!raw || typeof raw !== 'string') return raw;
-
-    const delimiter = raw.includes('{@24}') ? '{@24}' : '\r\n';
-    const items = raw.split(delimiter);
-    const existingKeys = new Set();
-    const out = [];
-    const modEntries = getModEntries();
-
-    for (let i = 0; i < items.length; i++) {
-      const part = items[i];
-      if (!part) continue;
-      if (part.includes('=') && !part.trim().startsWith('[')) {
-        const idx = part.indexOf('=');
-        const k = part.slice(0, idx).trim();
-        let v = part.slice(idx + 1).trim();
-
-        // Remove duplicate keys that freeze Clickteam's Party frame
-        if (isBadLegacyKey(k)) continue;
-
-        // Prevent empty or broken party slots (s1..s8)
-        if (/^s[1-8]$/.test(k) && (!v || v === '0' || parseInt(v, 10) > 48)) {
-          v = k.slice(1);
-        }
-
-        existingKeys.add(k);
-        if (Object.prototype.hasOwnProperty.call(modEntries, k)) {
-          out.push(k + '=' + modEntries[k]);
-          continue;
-        }
-        out.push(k + '=' + v);
-        continue;
-      }
-      out.push(part);
-    }
-
-    const modKeys = Object.keys(modEntries);
-    for (let i = 0; i < modKeys.length; i++) {
-      const k = modKeys[i];
-      if (!existingKeys.has(k)) {
-        out.push(k + '=' + modEntries[k]);
-      }
-    }
-
-    return out.join(delimiter);
-  };
-
-  const applyToAllSlots = function() {
-    let patchedCount = 0;
+  function getSavePrefix() {
+    const slot = document.getElementById('mod-slot').value;
     for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (isFnafSaveKey(key)) {
-        const current = localStorage.getItem(key);
-        if (current !== null) {
-          localStorage.setItem(key, patchSaveData(current));
-          patchedCount++;
+      const k = localStorage.key(i);
+      if (k && k.includes('freddyw')) {
+        const base = k.split('.');
+        return `${base}.s${slot}.`;
+      }
+    }
+    return `freddyw.s${slot}.`;
+  }
+
+  // Writes to BOTH localStorage AND Clickteam's active RAM cache simultaneously
+  function injectLiveValue(key, val) {
+    const slot = document.getElementById('mod-slot').value;
+    const prefix = getSavePrefix();
+    const globalBase = prefix.split('.');
+
+    // 1. Update localStorage
+    localStorage.setItem(prefix + key, val);
+    localStorage.setItem(`${globalBase}.${key}`, val);
+
+    // 2. Refresh object list in case frame changed
+    if (activeRuntime && activeRuntime.rhApp) {
+      findLiveIniExtensions(activeRuntime.rhApp);
+    }
+
+    // 3. Inject directly into Clickteam's live CRunIni RAM cache
+    liveIniObjects.forEach(iniExt => {
+      try {
+        if (typeof iniExt.setValue === 'function') {
+          iniExt.setValue(`s${slot}`, key, Number(val));
+          iniExt.setValue('', key, Number(val));
+        }
+        if (iniExt.ini && iniExt.ini.sections) {
+          if (!iniExt.ini.sections[`s${slot}`]) iniExt.ini.sections[`s${slot}`] = {};
+          iniExt.ini.sections[`s${slot}`][key] = String(val);
+        }
+      } catch (e) {}
+    });
+  }
+
+  // Trigger Clickteam's internal frame/party refresh flag if available
+  function forceEngineSync() {
+    if (!activeRuntime || !activeRuntime.rhApp) return;
+    const app = activeRuntime.rhApp;
+    // Re-evaluate frame events on next tick
+    if (app.rhEvtProg) {
+      app.rhEvtProg.rh2ActionOn = true;
+    }
+  }
+
+  function setStatus(msg) {
+    const el = document.getElementById('mod-status');
+    el.textContent = msg;
+    setTimeout(() => { el.textContent = "Live Runtime Hooked! Ready."; }, 2500);
+  }
+
+  window.toggleModMenu = function() {
+    const body = document.getElementById('fnaf-mod-body');
+    body.style.display = body.style.display === 'none' ? 'block' : 'none';
+  };
+
+  // 1. ALL CHARACTERS (Live + Party Freeze Fix)
+  window.unlockAllCharacters = function() {
+    for (let i = 1; i <= 40; i++) {
+      injectLiveValue(`${i}have`, '1');
+      const currentLv = localStorage.getItem(getSavePrefix() + `${i}lv`);
+      if (!currentLv || parseInt(currentLv) < 1) {
+        injectLiveValue(`${i}lv`, '1');
+      }
+    }
+    for (let p = 1; p <= 8; p++) {
+      injectLiveValue(`p${p}`, p.toString());
+    }
+    forceEngineSync();
+    setStatus("All 40 Characters injected LIVE!");
+  };
+
+  // 2. CHIPS & BYTES (Live)
+  window.unlockChipsAndBytes = function() {
+    for (let c = 1; c <= 21; c++) injectLiveValue(`c${c}`, '1');
+    for (let b = 1; b <= 21; b++) injectLiveValue(`b${b}`, '1');
+    injectLiveValue('tokens', '99999');
+    forceEngineSync();
+    setStatus("Chips, Bytes & Tokens injected LIVE!");
+  };
+
+  // 3. TROPHIES (Live)
+  window.unlockAllTrophies = function() {
+    for (let t = 1; t <= 9; t++) {
+      injectLiveValue(`trophy${t}`, '1');
+      injectLiveValue(`t${t}`, '1');
+    }
+    forceEngineSync();
+    setStatus("All 9 Trophies injected LIVE!");
+  };
+
+  // 4. CLOCK ENDING (Live)
+  window.unlockClockEnding = function() {
+    for (let clk = 1; clk <= 5; clk++) {
+      injectLiveValue(`clock${clk}`, '1');
+    }
+    injectLiveValue('clocks', '5');
+    injectLiveValue('portal', '1');
+    forceEngineSync();
+    setStatus("Clock Ending flags injected LIVE!");
+  };
+
+  // 5. INSTANT WARP (Live X/Y Coordinate Injection)
+  window.warpPlayer = function() {
+    const areaId = document.getElementById('warp-location').value;
+    const coords = {
+      "1": { x: 1320, y: 1580, area: 1 }, // Fazbear Hills
+      "2": { x: 2450, y: 1400, area: 2 }, // Choppy's Woods
+      "3": { x: 850,  y: 620,  area: 3 }, // Dusting Fields
+      "4": { x: 3100, y: 2100, area: 4 }, // Lilygear Lake
+      "5": { x: 600,  y: 2400, area: 5 }, // Blacktomb Yard
+      "6": { x: 1900, y: 2700, area: 6 }, // Deep-Metal Mine
+      "7": { x: 2950, y: 800,  area: 7 }  // Pinwheel Circus
+    };
+    const dest = coords[areaId];
+    if (!dest) return;
+
+    injectLiveValue('x', dest.x.toString());
+    injectLiveValue('y', dest.y.toString());
+    injectLiveValue('area', dest.area.toString());
+
+    // Directly move the active player sprite in the current overworld frame
+    if (activeRuntime && activeRuntime.rhApp && activeRuntime.rhApp.rhObjectList) {
+      const list = activeRuntime.rhApp.rhObjectList;
+      for (let i = 0; i < list.length; i++) {
+        const obj = list[i];
+        // Identify overworld Freddy/player object by movement controller & overworld bounds
+        if (obj && obj.roc && obj.roc.rcMovementType > 0 && obj.hoX > 100 && obj.hoY > 100) {
+          obj.hoX = dest.x;
+          obj.hoY = dest.y;
+          obj.roc.rcChanged = true;
         }
       }
     }
-    return patchedCount;
+    forceEngineSync();
+    setStatus("Warped live! Open/close Party menu to sync map.");
   };
-
-  applyToAllSlots();
-
-  // Safe Speed Multiplier (throttled so Clickteam screen fades never freeze)
-  let speedMultiplier = 1;
-  let lastTick = 0;
-  const origRAF = window.requestAnimationFrame.bind(window);
-  window.requestAnimationFrame = function(callback) {
-    return origRAF(function(timestamp) {
-      if (speedMultiplier === 1) {
-        callback(timestamp);
-        return;
-      }
-      if (timestamp - lastTick >= 16) {
-        lastTick = timestamp;
-        for (let i = 0; i < speedMultiplier; i++) {
-          callback(timestamp + i * 16);
-        }
-      } else {
-        callback(timestamp);
-      }
-    });
-  };
-
-  function initMenu() {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'position:fixed;top:12px;right:12px;z-index:999999;font-family:sans-serif;font-size:12px';
-
-    const toggle = document.createElement('button');
-    toggle.innerText = 'Hide Mod Menu';
-    toggle.style.cssText = 'background:#e94560;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;font-weight:bold;float:right;margin-bottom:6px';
-    wrap.appendChild(toggle);
-
-    const panel = document.createElement('div');
-    panel.style.cssText = 'clear:both;width:285px;background:#1a1a2e;color:#fff;border:2px solid #e94560;border-radius:8px;padding:12px;box-shadow:0 4px 15px rgba(0,0,0,0.7)';
-    panel.innerHTML =
-      '<div style="font-weight:bold;font-size:14px;border-bottom:1px solid #444;padding-bottom:6px;margin-bottom:8px">FNaF World Live Mod v5.5</div>' +
-      '<div style="display:flex;flex-direction:column;gap:5px">' +
-        '<button id="m-chars" style="padding:6px;background:' + (savedMods.chars ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock All 48 Characters ' + (savedMods.chars ? '(ON)' : '') + '</button>' +
-        '<button id="m-chips" style="padding:6px;background:' + (savedMods.chips ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock All Chips ' + (savedMods.chips ? '(ON)' : '') + '</button>' +
-        '<button id="m-bytes" style="padding:6px;background:' + (savedMods.bytes ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock All Bytes ' + (savedMods.bytes ? '(ON)' : '') + '</button>' +
-        '<button id="m-lvl" style="padding:6px;background:' + (savedMods.lvl ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Max Party Level (Level 100) ' + (savedMods.lvl ? '(ON)' : '') + '</button>' +
-        '<button id="m-tokens" style="padding:6px;background:' + (savedMods.tokens ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">99,999 Faz-Tokens ' + (savedMods.tokens ? '(ON)' : '') + '</button>' +
-        '<button id="m-clock" style="padding:6px;background:' + (savedMods.clock ? '#2e7d32' : '#0f3460') + ';color:#fff;border:1px solid #444;cursor:pointer;border-radius:4px">Unlock Clocks & All Trophies ' + (savedMods.clock ? '(ON)' : '') + '</button>' +
-        '<button id="m-speed" style="padding:6px;background:#533483;color:#fff;border:1px solid #666;cursor:pointer;border-radius:4px">Instant Speed Hack: 1x (Normal)</button>' +
-        '<button id="m-fix" style="padding:5px;background:#8b2635;color:#fff;border:1px solid #e94560;cursor:pointer;border-radius:4px;font-size:11px">Clean Save & Fix Party Freeze</button>' +
-        '<button id="m-inspect" style="padding:5px;background:#222;color:#aaa;border:1px solid #444;cursor:pointer;border-radius:4px;font-size:11px">Scan & View All Save Keys</button>' +
-      '</div>' +
-      '<div id="m-msg" style="margin-top:8px;color:#4ecca3;font-size:11px;line-height:1.35;max-height:110px;overflow-y:auto;word-break:break-all">Ready! Keep Speed Hack at 1x on the Party screen to prevent transition locks.</div>';
-    wrap.appendChild(panel);
-    document.body.appendChild(wrap);
-
-    toggle.onclick = function() {
-      const hidden = panel.style.display === 'none';
-      panel.style.display = hidden ? 'block' : 'none';
-      toggle.innerText = hidden ? 'Hide Mod Menu' : 'Show Mod Menu';
-    };
-
-    const toggleMod = function(modKey, btnId, label) {
-      savedMods[modKey] = !savedMods[modKey];
-      localStorage.setItem('fnafw_active_mods', JSON.stringify(savedMods));
-      const btn = document.getElementById(btnId);
-      btn.style.background = savedMods[modKey] ? '#2e7d32' : '#0f3460';
-      btn.innerText = label + (savedMods[modKey] ? ' (ON)' : '');
-      const count = applyToAllSlots();
-      document.getElementById('m-msg').innerText = savedMods[modKey]
-        ? label + ' ON! Patched ' + count + ' save file(s). Click Start -> Slot 1!'
-        : label + ' turned OFF.';
-    };
-
-    document.getElementById('m-chars').onclick = function() { toggleMod('chars', 'm-chars', 'Unlock All 48 Characters'); };
-    document.getElementById('m-chips').onclick = function() { toggleMod('chips', 'm-chips', 'Unlock All Chips'); };
-    document.getElementById('m-bytes').onclick = function() { toggleMod('bytes', 'm-bytes', 'Unlock All Bytes'); };
-    document.getElementById('m-lvl').onclick = function() { toggleMod('lvl', 'm-lvl', 'Max Party Level (Level 100)'); };
-    document.getElementById('m-tokens').onclick = function() { toggleMod('tokens', 'm-tokens', '99,999 Faz-Tokens'); };
-    document.getElementById('m-clock').onclick = function() { toggleMod('clock', 'm-clock', 'Unlock Clocks & All Trophies'); };
-
-    document.getElementById('m-speed').onclick = function() {
-      speedMultiplier = speedMultiplier === 1 ? 2 : speedMultiplier === 2 ? 3 : 1;
-      document.getElementById('m-speed').innerText = 'Instant Speed Hack: ' + speedMultiplier + 'x';
-      document.getElementById('m-msg').innerText = 'Game speed set to ' + speedMultiplier + 'x (set back to 1x before opening Party menu).';
-    };
-
-    document.getElementById('m-fix').onclick = function() {
-      speedMultiplier = 1;
-      document.getElementById('m-speed').innerText = 'Instant Speed Hack: 1x (Normal)';
-      const count = applyToAllSlots();
-      document.getElementById('m-msg').innerText = 'Cleaned ' + count + ' save file(s) and reset speed to 1x! Press F2 to reload the title screen cleanly.';
-    };
-
-    document.getElementById('m-inspect').onclick = function() {
-      const allKeys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-
-allKeys.push(localStorage.key(i));
-}
-const match = allKeys.find(isFnafSaveKey);
-const preview = match ? localStorage.getItem(match) : 'No save file created yet';
-document.getElementById('m-msg').innerText = 'Keys: [' + allKeys.join(', ') + ']\n---\n' + preview;
-};
-}
-if (document.readyState === 'loading') {
-document.addEventListener('DOMContentLoaded', initMenu);
-} else {
-initMenu();
-}
 })();
+</script>
