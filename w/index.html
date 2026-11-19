@@ -544,7 +544,7 @@ window.fnafMod = (function() {
     } catch (e) {}
   }
 
-  return {
+   return {
     unlockChars: function() {
       const data = { newgame: "0" };
       for (let i = 1; i <= 48; i++) {
@@ -556,56 +556,60 @@ window.fnafMod = (function() {
       }
       for (let p = 1; p <= 8; p++) {
         data[`p${p}`] = String(p);
-data[s${p}] = String(p);
-}
-writeFnafwIni(data);
-status("48 Chars saved! Re-enter slot/Party.");
-},
-unlockChips: function() {
-const data = {};
-for (let c = 1; c <= 21; c++) data[c${c}] = "1";
-writeFnafwIni(data);
-status("All 21 Chips saved to fnafw1!");
-},
-unlockBytes: function() {
-const data = {};
-for (let b = 1; b <= 21; b++) {
-data[b${b}] = "1";
-data[p${b}] = "1";
-}
-writeFnafwIni(data);
-status("All 21 Bytes saved to fnafw1!");
-},
-maxLevel: function() {
-const data = {};
-for (let i = 1; i <= 48; i++) {
-data[${i}have] = "1";
-data[${i}lv] = "999";
-data[${i}level] = "999";
-data[${i}next] = "0";
-data[${i}xp] = "9999999";
-}
-writeFnafwIni(data);
-status("All 48 Chars set to Lv. 999!");
-},
-maxTokens: function() {
-writeFnafwIni({ tokens: "999999", faztokens: "999999" });
-status("999,999 Tokens saved!");
-},
-warpArea: function() {
-const dest = AREAS[document.getElementById('warp-location').value];
-if (!dest) return;
-movePlayer(dest);
-status(Warped to Area ${dest.area}!);
-},
-warpBoss: function() {
-const dest = BOSSES[document.getElementById('boss-location').value];
-if (!dest) return;
-writeFnafwIni({ [boss${dest.bossId}]: "0" });
-movePlayer(dest);
-status(Warped to ${dest.name}!);
-}
-};
+        data[`s${p}`] = String(p);
+      }
+      writeFnafwIni(data);
+      status("48 Chars saved! Re-enter slot/Party.");
+    },
+    unlockChips: function() {
+      const data = {};
+      for (let c = 1; c <= 21; c++) data[`c${c}`] = "1";
+      writeFnafwIni(data);
+      status("All 21 Chips saved to " + document.getElementById('mod-slot').value + "!");
+    },
+    unlockBytes: function() {
+      const data = {};
+      for (let b = 1; b <= 21; b++) {
+        data[`b${b}`] = "1";
+        data[`p${b}`] = "1";
+      }
+      writeFnafwIni(data);
+      status("All 21 Bytes saved to " + document.getElementById('mod-slot').value + "!");
+    },
+    maxLevel: function() {
+      const data = {};
+      for (let i = 1; i <= 48; i++) {
+        data[`${i}have`] = "1";
+        data[`${i}lv`] = "999";
+        data[`${i}level`] = "999";
+        data[`${i}next`] = "0";
+        data[`${i}xp`] = "9999999";
+      }
+      writeFnafwIni(data);
+      status("All 48 Chars set to Lv. 999!");
+    },
+    maxTokens: function() {
+      writeFnafwIni({ tokens: "999999", faztokens: "999999" });
+      status("999,999 Tokens saved!");
+    },
+    warpArea: function() {
+      const dest = AREAS[document.getElementById('warp-location').value];
+      if (!dest) return;
+      movePlayer(dest);
+      status(`Warped to Area ${dest.area}!`);
+    },
+    warpBoss: function() {
+      const dest = BOSSES[document.getElementById('boss-location').value];
+      if (!dest) return;
+      writeFnafwIni({ [`boss${dest.bossId}`]: "0" });
+      movePlayer(dest);
+      status(`Warped to ${dest.name}!`);
+    }
+  };
 })();
-
+</script>
+</body>
 </html>
+
+
+
