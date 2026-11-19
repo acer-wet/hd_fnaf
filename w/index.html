@@ -334,298 +334,191 @@
         });
     };
 </script>
-<!-- FNAF WORLD IRV77 PORT MOD MENU V2 -->
-<div id="fnaf-mod-wrapper" style="position:fixed; top:8px; right:8px; z-index:999999; font-family:sans-serif; font-size:11px; user-select:auto; pointer-events:auto;">
+<!-- FNaF World Update 2 Character Mod Menu -->
+<style>
+  #fnafw-mod-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 99999;
+    background: #1e1e2e;
+    color: #fff;
+    border: 2px solid #ff6b00;
+    padding: 8px 14px;
+    font-family: monospace;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+  #fnafw-mod-menu {
+    display: none;
+    position: fixed;
+    top: 52px;
+    right: 12px;
+    width: 260px;
+    z-index: 99999;
+    background: rgba(20, 20, 30, 0.95);
+    color: #fff;
+    border: 2px solid #ff6b00;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: monospace;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+  }
+  #fnafw-mod-menu h3 {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+    color: #ff9d42;
+    border-bottom: 1px solid #444;
+    padding-bottom: 6px;
+  }
+  .mod-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 13px;
+  }
+  .mod-actions {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mod-actions button {
+    background: #ff6b00;
+    color: #fff;
+    border: none;
+    padding: 7px;
+    font-family: monospace;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .mod-actions button:hover {
+    background: #e05e00;
+  }
+  select {
+    background: #2b2b3d;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 3px;
+    font-family: monospace;
+  }
+</style>
+
+<button id="fnafw-mod-btn">Update 2 Mod Menu</button>
+
+<div id="fnafw-mod-menu">
+  <h3>Update 2 Characters</h3>
   
-  <!-- TOP ON/OFF TOGGLE BAR -->
-  <div style="display:flex; justify-content:flex-end; gap:4px; margin-bottom:4px;">
-    <button onclick="document.getElementById('fnaf-mod-menu').style.display='block'" style="background:#00e676; color:#000; border:none; border-radius:4px; padding:3px 8px; font-weight:bold; cursor:pointer; font-size:10px; box-shadow:0 2px 6px rgba(0,0,0,0.6);">
-      MENU ON
-    </button>
-    <button onclick="document.getElementById('fnaf-mod-menu').style.display='none'" style="background:#d32f2f; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-weight:bold; cursor:pointer; font-size:10px; box-shadow:0 2px 6px rgba(0,0,0,0.6);">
-      MENU OFF
-    </button>
+  <div class="mod-row">
+    <label for="fnafw-slot">Save Slot:</label>
+    <select id="fnafw-slot">
+      <option value="1">Slot 1</option>
+      <option value="2">Slot 2</option>
+      <option value="3">Slot 3</option>
+    </select>
   </div>
 
-  <!-- MAIN COMPACT PANEL -->
-  <div id="fnaf-mod-menu" style="width:215px; background:#12121c; color:#fff; border:2px solid #00e676; border-radius:6px; padding:8px; box-shadow:0 4px 14px rgba(0,0,0,0.9);">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:6px;">
-      <strong style="color:#00e676; font-size:12px;">FNaF World Mod v2</strong>
-      <select id="mod-slot" style="background:#222; color:#fff; border:1px solid #555; padding:1px 4px; border-radius:3px; font-size:10px;">
-        <option value="fnafw1">Slot 1 (fnafw1)</option>
-        <option value="fnafw2">Slot 2 (fnafw2)</option>
-        <option value="fnafw3">Slot 3 (fnafw3)</option>
-      </select>
-    </div>
+  <div id="fnafw-char-list"></div>
 
-    <!-- ALL 48 CHARACTERS + ANTI-FREEZE -->
-    <button onclick="fnafMod.unlockChars()" style="width:100%; margin-bottom:4px; padding:5px; background:#1565c0; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-      All 48 Chars (Fix Freeze)
-    </button>
-
-    <!-- CHIPS & BYTES -->
-    <div style="display:flex; gap:4px; margin-bottom:4px;">
-      <button onclick="fnafMod.unlockChips()" style="flex:1; padding:5px; background:#5e35b1; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-        All Chips
-      </button>
-      <button onclick="fnafMod.unlockBytes()" style="flex:1; padding:5px; background:#00838f; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-        All Bytes
-      </button>
-    </div>
-
-    <!-- MAX LEVEL & TOKENS -->
-    <div style="display:flex; gap:4px; margin-bottom:6px;">
-      <button onclick="fnafMod.maxLevel()" style="flex:1; padding:5px; background:#2e7d32; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-        Max Level
-      </button>
-      <button onclick="fnafMod.maxTokens()" style="flex:1; padding:5px; background:#f9a825; color:#000; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-        999,999 Tokens
-      </button>
-    </div>
-
-    <!-- AREA WARP -->
-    <div style="border-top:1px solid #333; padding-top:5px; margin-bottom:5px;">
-      <label style="display:block; margin-bottom:2px; color:#aaa; font-size:10px;">Area Warp:</label>
-      <div style="display:flex; gap:4px;">
-        <select id="warp-location" style="flex:1; background:#222; color:#fff; border:1px solid #555; padding:2px; border-radius:3px; font-size:10px;">
-          <option value="1">1. Fazbear Hills</option>
-          <option value="2">2. Choppy's Woods</option>
-          <option value="3">3. Dusting Fields</option>
-          <option value="4">4. Lilygear Lake</option>
-          <option value="5">5. Blacktomb Yard</option>
-          <option value="6">6. Deep-Metal Mine</option>
-          <option value="7">7. Pinwheel Circus</option>
-        </select>
-        <button onclick="fnafMod.warpArea()" style="padding:3px 8px; background:#d84315; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:10px;">
-          Warp
-        </button>
-      </div>
-    </div>
-
-    <!-- BOSS WARP -->
-    <div style="border-top:1px solid #333; padding-top:5px; margin-bottom:5px;">
-      <label style="display:block; margin-bottom:2px; color:#ff8a80; font-size:10px;">Boss Warp:</label>
-      <div style="display:flex; gap:4px;">
-        <select id="boss-location" style="flex:1; background:#222; color:#fff; border:1px solid #555; padding:2px; border-radius:3px; font-size:10px;">
-          <option value="auto">Auto-Chipper</option>
-          <option value="bouncer">Bouncer</option>
-          <option value="browboy">Browboy</option>
-          <option value="madendo">Mad Endo</option>
-          <option value="supergoon">Supergoon</option>
-          <option value="security">Security (Final)</option>
-          <option value="scott">Scott Cawthon</option>
-          <option value="chica">Chica's Magic Rainbow</option>
-        </select>
-        <button onclick="fnafMod.warpBoss()" style="padding:3px 8px; background:#b71c1c; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:10px;">
-          Boss
-        </button>
-      </div>
-    </div>
-
-    <!-- STATUS BAR -->
-    <div id="mod-status" style="font-size:10px; color:#00e676; min-height:14px; text-align:center;">
-      Ready (irv77 fnafw1 mode)
-    </div>
+  <div class="mod-actions">
+    <button id="fnafw-unlock-all">Select All Update 2</button>
+    <button id="fnafw-apply">Save & Reload Game</button>
   </div>
 </div>
-window.fnafMod = (function() {
-  const AREAS = {
-    "1": { area: 1, x: 1850, y: 2150 },
-    "2": { area: 2, x: 1100, y: 2650 },
-    "3": { area: 3, x: 1150, y: 1250 },
-    "4": { area: 4, x: 2650, y: 2650 },
-    "5": { area: 5, x: 2700, y: 1850 },
-    "6": { area: 6, x: 2450, y: 1150 },
-    "7": { area: 7, x: 3250, y: 1200 }
+
+<script>
+(function() {
+  const update2Chars = [
+    { id: 41, name: "Jack-O-Bonnie" },
+    { id: 42, name: "Jack-O-Chica" },
+    { id: 43, name: "Animdude" },
+    { id: 44, name: "Mr. Chipper" },
+    { id: 45, name: "Nightmare BB" },
+    { id: 46, name: "Nightmarionne" },
+    { id: 47, name: "Coffee" },
+    { id: 48, name: "Purple Guy" }
+  ];
+
+  const btn = document.getElementById("fnafw-mod-btn");
+  const menu = document.getElementById("fnafw-mod-menu");
+  const list = document.getElementById("fnafw-char-list");
+  const slotSelect = document.getElementById("fnafw-slot");
+
+  // Toggle menu visibility
+  btn.onclick = () => {
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+    loadCurrentState();
   };
 
-  const BOSSES = {
-    "auto":      { area: 2, x: 960,  y: 2480, bossId: 1, name: "Auto-Chipper" },
-    "bouncer":   { area: 3, x: 980,  y: 1120, bossId: 2, name: "Bouncer" },
-    "browboy":   { area: 4, x: 2820, y: 2460, bossId: 3, name: "Browboy" },
-    "madendo":   { area: 5, x: 2850, y: 1700, bossId: 4, name: "Mad Endo" },
-    "supergoon": { area: 6, x: 2300, y: 1020, bossId: 5, name: "Supergoon" },
-    "security":  { area: 7, x: 3420, y: 980,  bossId: 6, name: "Security" },
-    "scott":     { area: 7, x: 3560, y: 860,  bossId: 7, name: "Scott Cawthon" },
-    "chica":     { area: 7, x: 3650, y: 780,  bossId: 8, name: "Chica's Rainbow" }
+  // Build checkboxes for IDs 41-48
+  update2Chars.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "mod-row";
+    row.innerHTML = `
+      <label for="char-${c.id}">${c.name}</label>
+      <input type="checkbox" id="char-${c.id}" data-id="${c.id}">
+    `;
+    list.appendChild(row);
+  });
+
+  // Helper to locate Clickteam localStorage key (handles optional prefixes)
+  function findSaveKey(slot) {
+    const target = "fnafw" + slot;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key === target || key.endsWith(target)) return key;
+    }
+    return target;
+  }
+
+  // Read existing save data into checkboxes
+  function loadCurrentState() {
+    const key = findSaveKey(slotSelect.value);
+    const raw = localStorage.getItem(key) || "";
+    update2Chars.forEach(c => {
+      const regex = new RegExp(`^${c.id}have=1`, "m");
+      document.getElementById(`char-${c.id}`).checked = regex.test(raw);
+    });
+  }
+
+  slotSelect.onchange = loadCurrentState;
+
+  // Check all boxes
+  document.getElementById("fnafw-unlock-all").onclick = () => {
+    update2Chars.forEach(c => {
+      document.getElementById(`char-${c.id}`).checked = true;
+    });
   };
 
-  function status(msg, isError) {
-    const el = document.getElementById('mod-status');
-    if (el) {
-      el.style.color = isError ? '#ff5252' : '#00e676';
-      el.textContent = msg;
-    }
-  }
+  // Write changes to localStorage and reload
+  document.getElementById("fnafw-apply").onclick = () => {
+    const key = findSaveKey(slotSelect.value);
+    let raw = localStorage.getItem(key);
 
-  function updateIniText(raw, sectionName, updates) {
-    const lines = (raw || `[${sectionName}]\n`).split(/\r?\n/);
-    const seen = new Set();
-    const result = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const eq = line.indexOf('=');
-      if (eq > 0 && !line.trim().startsWith('[')) {
-        const k = line.substring(0, eq).trim();
-        if (Object.prototype.hasOwnProperty.call(updates, k)) {
-          result.push(`${k}=${updates[k]}`);
-          seen.add(k);
-          continue;
-        }
-      }
-      result.push(line);
+    if (!raw) {
+      alert("No save file found in Slot " + slotSelect.value + "! Start a new game in that slot first.");
+      return;
     }
 
-    if (!result.some(l => l.trim().startsWith('['))) {
-      result.unshift(`[${sectionName}]`);
-    }
+    let lines = raw.split(/\r?\n/);
 
-    for (const [k, v] of Object.entries(updates)) {
-      if (!seen.has(k)) {
-        result.push(`${k}=${v}`);
+    update2Chars.forEach(c => {
+      const checked = document.getElementById(`char-${c.id}`).checked;
+      const prefix = `${c.id}have=`;
+      lines = lines.filter(line => !line.startsWith(prefix));
+      if (checked) {
+        lines.push(`${c.id}have=1`);
       }
-    }
-    return result.join('\n');
-  }
-
-  function writeFnafwIni(updates) {
-    try {
-      const slotKey = document.getElementById('mod-slot').value;
-      const matchingKeys = [];
-
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.toLowerCase().includes(slotKey)) {
-          matchingKeys.push(key);
-        }
-      }
-
-      if (!matchingKeys.includes(slotKey)) {
-        matchingKeys.push(slotKey);
-      }
-
-      for (const key of matchingKeys) {
-        if (key.includes('.') && !key.endsWith('.ini')) {
-          const prop = key.split('.').pop();
-          if (Object.prototype.hasOwnProperty.call(updates, prop)) {
-            localStorage.setItem(key, String(updates[prop]));
-          }
-        } else {
-          const current = localStorage.getItem(key);
-          localStorage.setItem(key, updateIniText(current, slotKey, updates));
-        }
-      }
-
-      const canvas = document.getElementById('MMFCanvas');
-      const app = (window.Runtime && window.Runtime.rhApp) || (canvas && canvas.application);
-      if (app && app.rhObjectList) {
-        for (let i = 0; i < app.rhObjectList.length; i++) {
-          const obj = app.rhObjectList[i];
-          if (obj && obj.ext && obj.ext.ini && obj.ext.ini.sections) {
-            Object.keys(obj.ext.ini.sections).forEach(s => {
-              Object.assign(obj.ext.ini.sections[s], updates);
-            });
-          }
-        }
-      }
-    } catch (err) {
-      status("Err: " + err.message, true);
-    }
-  }
-
-  function movePlayer(dest) {
-    writeFnafwIni({
-      area: String(dest.area),
-      x: String(dest.x),
-      y: String(dest.y)
     });
 
-    try {
-      const canvas = document.getElementById('MMFCanvas');
-      const app = (window.Runtime && window.Runtime.rhApp) || (canvas && canvas.application);
-      if (app && app.rhObjectList) {
-        for (let i = 0; i < app.rhObjectList.length; i++) {
-          const obj = app.rhObjectList[i];
-          if (obj && obj.roc && obj.rom && obj.rom.rmMovement && obj.rom.rmMovement.mvType !== 0) {
-            if (obj.hoX > 200 && obj.hoX < 4500 && obj.hoY > 200 && obj.hoY < 4500) {
-              obj.hoX = dest.x;
-              obj.hoY = dest.y;
-              obj.roc.rcChanged = true;
-            }
-          }
-        }
-        if (typeof app.setDisplay === 'function') {
-          app.setDisplay(dest.x - 400, dest.y - 240, -1, -1);
-        }
-      }
-    } catch (e) {}
-  }
-
-  return {
-    unlockChars: function() {
-const data = { newgame: "0" };
-for (let i = 1; i <= 48; i++) {
-data[${i}have] = "1";
-data[${i}lv] = "25";
-data[${i}level] = "25";
-data[${i}next] = "0";
-data[${i}xp] = "0";
-}
-for (let p = 1; p <= 8; p++) {
-data[p${p}] = String(p);
-data[s${p}] = String(p);
-}
-writeFnafwIni(data);
-status("48 Chars saved! Re-enter slot.");
-},
-unlockChips: function() {
-const data = {};
-for (let c = 1; c <= 21; c++) data[c${c}] = "1";
-writeFnafwIni(data);
-status("All 21 Chips saved!");
-},
-unlockBytes: function() {
-const data = {};
-for (let b = 1; b <= 21; b++) {
-data[b${b}] = "1";
-data[p${b}] = "1";
-}
-writeFnafwIni(data);
-status("All 21 Bytes saved!");
-},
-maxLevel: function() {
-const data = {};
-for (let i = 1; i <= 48; i++) {
-data[${i}have] = "1";
-data[${i}lv] = "999";
-data[${i}level] = "999";
-data[${i}next] = "0";
-data[${i}xp] = "9999999";
-}
-writeFnafwIni(data);
-status("All 48 Chars set to Lv. 999!");
-},
-maxTokens: function() {
-writeFnafwIni({ tokens: "999999", faztokens: "999999" });
-status("999,999 Tokens saved!");
-},
-warpArea: function() {
-const dest = AREAS[document.getElementById('warp-location').value];
-if (!dest) return;
-movePlayer(dest);
-status(Warped to Area ${dest.area}!);
-},
-warpBoss: function() {
-const dest = BOSSES[document.getElementById('boss-location').value];
-if (!dest) return;
-writeFnafwIni({ [boss${dest.bossId}]: "0" });
-movePlayer(dest);
-status(Warped to ${dest.name}!);
-}
-};
+    localStorage.setItem(key, lines.join("\n"));
+    location.reload();
+  };
 })();
-    })();
 </script>
 </body>
 </html>
