@@ -334,7 +334,8 @@
     };
 </script>
 </html>
-<!-- FNAF WORLD HTML5 MOD MENU V11 (ON/OFF TOGGLE + MAX LEVEL + BOSS WARP + FULL UNLOCK) -->
+</script>
+<!-- FNAF WORLD HTML5 MOD MENU V13 (TRUE INI TEXT INJECTOR + GLOBAL VALUES + WARP) -->
 <div id="fnaf-mod-wrapper" style="position:fixed; top:8px; right:8px; z-index:999999; font-family:sans-serif; font-size:11px;">
   
   <!-- TOP ON/OFF TOGGLE BAR -->
@@ -347,10 +348,10 @@
     </button>
   </div>
 
-  <!-- MAIN COMPACT MOD PANEL -->
-  <div id="fnaf-mod-menu" style="width:215px; background:#14141f; color:#fff; border:2px solid #00e676; border-radius:6px; padding:8px; box-shadow:0 4px 12px rgba(0,0,0,0.85);">
+  <!-- MAIN COMPACT PANEL -->
+  <div id="fnaf-mod-menu" style="width:220px; background:#12121c; color:#fff; border:2px solid #00e676; border-radius:6px; padding:8px; box-shadow:0 4px 14px rgba(0,0,0,0.9);">
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:6px;">
-      <strong style="color:#00e676; font-size:12px;">FNaF World Mod v11</strong>
+      <strong style="color:#00e676; font-size:12px;">FNaF World Mod v13</strong>
       <select id="mod-slot" style="background:#222; color:#fff; border:1px solid #555; padding:1px 4px; border-radius:3px; font-size:10px;">
         <option value="1">Slot 1</option>
         <option value="2">Slot 2</option>
@@ -360,10 +361,10 @@
 
     <!-- ALL 48 CHARACTERS + ANTI-FREEZE -->
     <button onclick="unlockAllCharacters()" style="width:100%; margin-bottom:4px; padding:5px; background:#1565c0; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-      All 48 Chars (Fix Freeze)
+      All 48 Chars (Fix Stripes)
     </button>
 
-    <!-- CHIPS & BYTES ROW -->
+    <!-- CHIPS & BYTES -->
     <div style="display:flex; gap:4px; margin-bottom:4px;">
       <button onclick="unlockAllChips()" style="flex:1; padding:5px; background:#5e35b1; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
         All Chips
@@ -373,7 +374,7 @@
       </button>
     </div>
 
-    <!-- MAX LEVEL & 999,999 TOKENS ROW -->
+    <!-- MAX LEVEL & TOKENS -->
     <div style="display:flex; gap:4px; margin-bottom:6px;">
       <button onclick="setMaxLevel()" style="flex:1; padding:5px; background:#2e7d32; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
         Max Level
@@ -403,7 +404,7 @@
     </div>
 
     <!-- BOSS WARP -->
-    <div style="border-top:1px solid #333; padding-top:5px; margin-bottom:5px;">
+    <div style="border-top:1px solid #333; padding-top:5px; margin-bottom:6px;">
       <label style="display:block; margin-bottom:2px; color:#ff8a80; font-size:10px;">Boss Warp:</label>
       <div style="display:flex; gap:4px;">
         <select id="boss-location" style="flex:1; background:#222; color:#fff; border:1px solid #555; padding:2px; border-radius:3px; font-size:10px;">
@@ -422,18 +423,20 @@
       </div>
     </div>
 
+    <!-- SAVE SCANNER DIAGNOSTIC BUTTON -->
+    <button onclick="scanSaveKeys()" style="width:100%; margin-bottom:4px; padding:3px; background:#333; color:#ccc; border:1px solid #555; border-radius:3px; cursor:pointer; font-size:9px;">
+      Detect Save File Name
+    </button>
+
     <!-- STATUS BAR -->
-    <div id="mod-status" style="font-size:10px; color:#00e676; min-height:14px; text-align:center;">
-      Scanning Clickteam Runtime...
+    <div id="mod-status" style="font-size:10px; color:#00e676; min-height:14px; text-align:center; word-break:break-word;">
+      Ready (Boot-Safe Mode)
     </div>
   </div>
 </div>
 
 <script>
 (function() {
-  let activeRuntime = null;
-  let liveIniObjects = [];
-
   const AREA_COORDS = {
     "1": { area: 1, x: 1850, y: 2150 },
     "2": { area: 2, x: 1100, y: 2650 },
@@ -455,205 +458,226 @@
     "chica":     { area: 7, x: 3650, y: 780,  bossId: 8, name: "Chica's Rainbow" }
   };
 
-  // 1. HOOK CLICKTEAM RUNTIME
-  const hookInterval = setInterval(() => {
-    if (window.Runtime && window.Runtime.rhApp) {
-      activeRuntime = window.Runtime;
-    } else {
-      for (let key in window) {
-        try {
-          if (window[key] && window[key].rhApp && window[key].rhApp.gValues) {
-            activeRuntime = window[key];
-            break;
-          }
-        } catch (e) {}
-      }
-    }
-
-    if (activeRuntime && activeRuntime.rhApp) {
-      findLiveIniExtensions(activeRuntime.rhApp);
-      document.getElementById('mod-status').textContent = "Runtime Hooked! Ready.";
-      clearInterval(hookInterval);
-    }
-  }, 500);
-
-  function findLiveIniExtensions(app) {
-    liveIniObjects = [];
-    if (!app.rhObjectList) return;
-    for (let i = 0; i < app.rhObjectList.length; i++) {
-      const obj = app.rhObjectList[i];
-      if (obj && obj.roc && obj.ext && (obj.ext.ini || obj.ext.items || typeof obj.ext.setValue === 'function')) {
-        liveIniObjects.push(obj.ext);
-      }
-    }
-  }
-
-  function getMatchingPrefixes(slot) {
-    const prefixes = new Set([
-      `fnafw${slot}.`,
-      `fnafw${slot}.fnafw${slot}.`,
-      `freddyw.s${slot}.`
-    ]);
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      if (k.includes(`fnafw${slot}`) || k.includes('freddyw')) {
-        const lastDot = k.lastIndexOf('.');
-        if (lastDot !== -1) {
-          prefixes.add(k.substring(0, lastDot + 1));
-        }
-      }
-    }
-    return Array.from(prefixes);
-  }
-
-  function injectLiveValue(key, val) {
-    const slot = document.getElementById('mod-slot').value;
-    const prefixes = getMatchingPrefixes(slot);
-
-    prefixes.forEach(prefix => {
-      localStorage.setItem(prefix + key, String(val));
-    });
-
-    if (activeRuntime && activeRuntime.rhApp) {
-      findLiveIniExtensions(activeRuntime.rhApp);
-    }
-
-    liveIniObjects.forEach(iniExt => {
-      try {
-        const sectionsToTry = [`fnafw${slot}`, `s${slot}`, ''];
-        sectionsToTry.forEach(sec => {
-          if (typeof iniExt.setValue === 'function') {
-            iniExt.setValue(sec, key, Number(val));
-          }
-          if (iniExt.ini && iniExt.ini.sections) {
-            if (!iniExt.ini.sections[sec]) iniExt.ini.sections[sec] = {};
-            iniExt.ini.sections[sec][key] = String(val);
-          }
-        });
-        if (typeof iniExt.saveIni === 'function') iniExt.saveIni();
-      } catch (e) {}
-    });
-  }
-
-  function moveOverworldPlayer(dest) {
-    injectLiveValue('area', dest.area);
-    injectLiveValue('x', dest.x);
-    injectLiveValue('y', dest.y);
-
-    if (activeRuntime && activeRuntime.rhApp && activeRuntime.rhApp.rhObjectList) {
-      const app = activeRuntime.rhApp;
-      for (let i = 0; i < app.rhObjectList.length; i++) {
-        const obj = app.rhObjectList[i];
-        if (obj && obj.roc && obj.rom && obj.rom.rmMovement && (obj.rom.rmMovement.mvType === 2 || obj.rom.rmMovement.mvType === 3)) {
-          obj.hoX = dest.x;
-          obj.hoY = dest.y;
-          obj.roc.rcChanged = true;
-        }
-      }
-      if (typeof app.setDisplay === 'function') {
-        app.setDisplay(dest.x - 400, dest.y - 240, -1, -1);
-      }
-    }
-  }
-
-  function forceEngineSync() {
-    if (!activeRuntime || !activeRuntime.rhApp) return;
-    const app = activeRuntime.rhApp;
-    if (app.rhEvtProg) {
-      app.rhEvtProg.rh2ActionOn = true;
-    }
-  }
-
   function setStatus(msg) {
     const el = document.getElementById('mod-status');
     el.textContent = msg;
-setTimeout(() => { el.textContent = "Runtime Hooked! Ready."; }, 3000);
+  }
+
+  // Safely grab Clickteam Runtime ONLY when user clicks a button (never during page load!)
+  function getApp() {
+    try {
+      if (window.Runtime && window.Runtime.rhApp) return window.Runtime.rhApp;
+      const canvas = document.getElementById('MMFCanvas');
+      if (canvas && canvas.application) return canvas.application;
+    } catch (e) {}
+    return null;
+  }
+
+  // Find all localStorage keys that hold Clickteam INI text blobs for the selected slot
+  function getTargetIniStorageKeys(slot) {
+    const matches = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      const lower = k.toLowerCase();
+      if (lower.includes(`fnafw${slot}`) || lower.includes(`freddyw`) || lower.includes(`slot${slot}`) || lower.includes(`save${slot}`)) {
+        matches.push(k);
+      }
+    }
+    // Always include standard Clickteam INI names as fallback
+    if (!matches.includes(`fnafw${slot}`)) matches.push(`fnafw${slot}`);
+    if (!matches.includes(`fnafw${slot}.ini`)) matches.push(`fnafw${slot}.ini`);
+    return matches;
+  }
+
+  // Parse a Clickteam INI text string, apply a dictionary of key=value updates, and serialize back
+  function updateIniTextBlock(rawText, sectionName, updatesObj) {
+    let text = rawText || `[${sectionName}]\n`;
+    const lines = text.split(/\r?\n/);
+    const updatedKeys = new Set();
+    const outLines = [];
+
+    for (let line of lines) {
+      const eqIdx = line.indexOf('=');
+      if (eqIdx > 0 && !line.trim().startsWith('[')) {
+        const k = line.substring(0, eqIdx).trim();
+        if (Object.prototype.hasOwnProperty.call(updatesObj, k)) {
+          outLines.push(`${k}=${updatesObj[k]}`);
+          updatedKeys.add(k);
+          continue;
+        }
+      }
+      outLines.push(line);
+    }
+
+    // Ensure section header exists if file was empty
+    if (!outLines.some(l => l.trim().startsWith('['))) {
+      outLines.unshift(`[${sectionName}]`);
+    }
+
+    // Append any keys that weren't already present in the INI file
+    for (const [k, v] of Object.entries(updatesObj)) {
+      if (!updatedKeys.has(k)) {
+        outLines.push(`${k}=${v}`);
+      }
+    }
+
+    return outLines.join('\n');
+  }
+
+  // Master batch writer: updates localStorage INI blobs AND live Clickteam INI/Global memory
+  function applyBatchUpdates(updatesObj) {
+    const slot = document.getElementById('mod-slot').value;
+    const storageKeys = getTargetIniStorageKeys(slot);
+
+    storageKeys.forEach(sKey => {
+      const existing = localStorage.getItem(sKey);
+      // If it's a sub-key like "fnafw1.1have", update directly; otherwise treat as full INI text file
+      const dotPart = sKey.split('.').pop();
+      if (existing !== null && !existing.includes('\n') && !existing.includes('=') && Object.prototype.hasOwnProperty.call(updatesObj, dotPart)) {
+        localStorage.setItem(sKey, String(updatesObj[dotPart]));
+      } else {
+        const newIniText = updateIniTextBlock(existing, `fnafw${slot}`, updatesObj);
+        localStorage.setItem(sKey, newIniText);
+      }
+    });
+
+    // Also update live CRunIni objects in Clickteam RAM if active
+    const app = getApp();
+    if (app && app.rhObjectList) {
+      for (let i = 0; i < app.rhObjectList.length; i++) {
+const obj = app.rhObjectList[i];
+if (!obj || !obj.ext) continue;
+const ext = obj.ext;
+try {
+if (ext.ini && ext.ini.sections) {
+const secNames = Object.keys(ext.ini.sections);
+if (secNames.length === 0) secNames.push(fnafw${slot});
+secNames.forEach(sec => {
+Object.assign(ext.ini.sections[sec], updatesObj);
+});
+}
+if (typeof ext.setValue === 'function') {
+for (const [k, v] of Object.entries(updatesObj)) {
+ext.setValue(fnafw${slot}, k, Number(v));
+ext.setValue('', k, Number(v));
+}
+}
+} catch (e) {}
+}
+}
 }
 // ON / OFF MENU TOGGLE
 window.setModMenuOpen = function(isOpen) {
-const menu = document.getElementById('fnaf-mod-menu');
-const btnOn = document.getElementById('btn-menu-on');
-const btnOff = document.getElementById('btn-menu-off');
-if (isOpen) {
-menu.style.display = 'block';
-btnOn.style.opacity = '1';
-btnOff.style.opacity = '0.6';
+document.getElementById('fnaf-mod-menu').style.display = isOpen ? 'block' : 'none';
+};
+// DIAGNOSTIC: Show exact localStorage keys so you know how this port saves data
+window.scanSaveKeys = function() {
+const keys = [];
+for (let i = 0; i < localStorage.length; i++) {
+keys.push(localStorage.key(i));
+}
+if (keys.length === 0) {
+setStatus("No save found yet! Start a New Game first.");
 } else {
-menu.style.display = 'none';
-btnOn.style.opacity = '0.85';
-btnOff.style.opacity = '1';
+setStatus("Found keys: " + keys.slice(0, 4).join(", "));
 }
 };
-// 1. ALL 48 CHARACTERS + PARTY SCREEN & CRYING CHILD ANTI-FREEZE
+// 1. ALL 48 CHARACTERS + FIX 3-STRIPE & CRYING CHILD FREEZE
 window.unlockAllCharacters = function() {
+const batch = { newgame: "0" };
 for (let i = 1; i <= 48; i++) {
-injectLiveValue(${i}have, '1');
-injectLiveValue(${i}lv, '25');
-injectLiveValue(${i}level, '25');
-injectLiveValue(${i}next, '0');
+batch[${i}have] = "1";
+batch[${i}lv] = "25";
+batch[${i}level] = "25";
+batch[${i}next] = "0";
+batch[${i}xp] = "0";
 }
+// Set clean valid party slots 1-8
 for (let p = 1; p <= 8; p++) {
-injectLiveValue(p${p}, String(p));
-injectLiveValue(s${p}, String(p));
+batch[p${p}] = String(p);
+batch[s${p}] = String(p);
 }
-injectLiveValue('newgame', '0');
-forceEngineSync();
-setStatus("All 48 Chars Unlocked! Re-open Party.");
+applyBatchUpdates(batch);
+setStatus("48 Chars Unlocked! Reload slot from Title Screen.");
 };
 // 2. ALL CHIPS
 window.unlockAllChips = function() {
-for (let c = 1; c <= 21; c++) {
-injectLiveValue(c${c}, '1');
-}
-forceEngineSync();
+const batch = {};
+for (let c = 1; c <= 21; c++) batch[c${c}] = "1";
+applyBatchUpdates(batch);
 setStatus("All 21 Chips unlocked!");
 };
 // 3. ALL BYTES
 window.unlockAllBytes = function() {
+const batch = {};
 for (let b = 1; b <= 21; b++) {
-injectLiveValue(b${b}, '1');
-injectLiveValue(p${b}, '1');
+batch[b${b}] = "1";
+batch[p${b}] = "1";
 }
-forceEngineSync();
+applyBatchUpdates(batch);
 setStatus("All 21 Bytes unlocked!");
 };
-// 4. MAX LEVEL (LV. 999 FOR ALL 48 CHARACTERS)
+// 4. MAX LEVEL (LV. 999)
 window.setMaxLevel = function() {
+const batch = {};
 for (let i = 1; i <= 48; i++) {
-injectLiveValue(${i}lv, '999');
-injectLiveValue(${i}level, '999');
-injectLiveValue(${i}next, '0');
-injectLiveValue(${i}xp, '9999999');
+batch[${i}have] = "1";
+batch[${i}lv] = "999";
+batch[${i}level] = "999";
+batch[${i}next] = "0";
+batch[${i}xp] = "9999999";
 }
-forceEngineSync();
-setStatus("All 48 Chars set to Max Level (999)!");
+applyBatchUpdates(batch);
+setStatus("All 48 Chars set to Lv. 999!");
 };
 // 5. 999,999 TOKENS
 window.giveMaxTokens = function() {
-injectLiveValue('tokens', '999999');
-injectLiveValue('faztokens', '999999');
-forceEngineSync();
-setStatus("999,999 Tokens added!");
+applyBatchUpdates({ tokens: "999999", faztokens: "999999" });
+setStatus("999,999 Tokens saved!");
 };
+// Helper to move player both in Save File AND in live Overworld Frame
+function executeWarp(dest) {
+applyBatchUpdates({
+area: String(dest.area),
+x: String(dest.x),
+y: String(dest.y)
+});
+const app = getApp();
+if (app && app.rhObjectList) {
+let moved = false;
+for (let i = 0; i < app.rhObjectList.length; i++) {
+const obj = app.rhObjectList[i];
+// Find the player object on the overworld map (typically ~40-80px wide, movable, within map bounds)
+if (obj && obj.roc && obj.hoX > 200 && obj.hoX < 4500 && obj.hoY > 200 && obj.hoY < 4500) {
+if (obj.rom && obj.rom.rmMovement && obj.rom.rmMovement.mvType !== 0) {
+obj.hoX = dest.x;
+obj.hoY = dest.y;
+obj.roc.rcChanged = true;
+moved = true;
+}
+}
+}
+if (moved && typeof app.setDisplay === 'function') {
+app.setDisplay(dest.x - 400, dest.y - 240, -1, -1);
+}
+}
+}
 // 6. AREA WARP
 window.warpToArea = function() {
 const locKey = document.getElementById('warp-location').value;
 const dest = AREA_COORDS[locKey];
 if (!dest) return;
-moveOverworldPlayer(dest);
-forceEngineSync();
-setStatus(Warped to Area ${dest.area}!);
+executeWarp(dest);
+setStatus(Warped to Area ${dest.area}! (Or reload save));
 };
 // 7. BOSS WARP
 window.warpToBoss = function() {
 const bossKey = document.getElementById('boss-location').value;
 const dest = BOSS_COORDS[bossKey];
 if (!dest) return;
-injectLiveValue(boss${dest.bossId}, '0');
-moveOverworldPlayer(dest);
-forceEngineSync();
+applyBatchUpdates({ [boss${dest.bossId}]: "0" });
+executeWarp(dest);
 setStatus(Warped to ${dest.name}!);
 };
 })();
