@@ -334,13 +334,13 @@
         });
     };
 </script>
-<!-- FNaF World Update 2 Character Mod Menu -->
+<!-- FNaF World Update 2 Character Mod Menu (Fixed Save Detection) -->
 <style>
   #fnafw-mod-btn {
     position: fixed;
     top: 12px;
     right: 12px;
-    z-index: 99999;
+    z-index: 999999;
     background: #1e1e2e;
     color: #fff;
     border: 2px solid #ff6b00;
@@ -356,15 +356,15 @@
     position: fixed;
     top: 52px;
     right: 12px;
-    width: 260px;
-    z-index: 99999;
-    background: rgba(20, 20, 30, 0.95);
+    width: 270px;
+    z-index: 999999;
+    background: rgba(20, 20, 30, 0.96);
     color: #fff;
     border: 2px solid #ff6b00;
     border-radius: 8px;
     padding: 14px;
     font-family: monospace;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.7);
   }
   #fnafw-mod-menu h3 {
     margin: 0 0 10px 0;
@@ -399,6 +399,12 @@
   .mod-actions button:hover {
     background: #e05e00;
   }
+  #fnafw-status {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #9ef01a;
+    word-break: break-all;
+  }
   select {
     background: #2b2b3d;
     color: #fff;
@@ -428,6 +434,8 @@
     <button id="fnafw-unlock-all">Select All Update 2</button>
     <button id="fnafw-apply">Save & Reload Game</button>
   </div>
+
+  <div id="fnafw-status">Checking save data...</div>
 </div>
 
 <script>
@@ -447,14 +455,9 @@
   const menu = document.getElementById("fnafw-mod-menu");
   const list = document.getElementById("fnafw-char-list");
   const slotSelect = document.getElementById("fnafw-slot");
+  const statusEl = document.getElementById("fnafw-status");
 
-  // Toggle menu visibility
-  btn.onclick = () => {
-    menu.style.display = menu.style.display === "block" ? "none" : "block";
-    loadCurrentState();
-  };
-
-  // Build checkboxes for IDs 41-48
+  // Build checkboxes
   update2Chars.forEach(c => {
     const row = document.createElement("div");
     row.className = "mod-row";
@@ -465,58 +468,99 @@
     list.appendChild(row);
   });
 
-  // Helper to locate Clickteam localStorage key (handles optional prefixes)
-  function findSaveKey(slot) {
-    const target = "fnafw" + slot;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key === target || key.endsWith(target)) return key;
+  // Search both main window and any same-origin iframes for Clickteam's save key
+  function getStorageTarget(slot) {
+    const stores = [window.localStorage];
+    document.querySelectorAll("iframe").forEach(frame => {
+      try {
+        if (frame.contentWindow && frame.contentWindow.localStorage) {
+          stores.push(frame.contentWindow.localStorage);
+        }
+      } catch (e) {}
+    });
+
+    const suffix = "fnafw" + slot;
+
+    for (const store of stores) {
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && k.toLowerCase().includes(suffix)) {
+          return { store, key: k };
+        }
+      }
     }
-    return target;
+
+    // Fallback: check if any other fnafw slot exists so we copy its exact prefix
+    for (const store of stores) {
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (k && k.toLowerCase().includes("fnafw")) {
+          const prefix = k.replace(/fnafw\d+/i, "");
+          return { store, key: prefix + suffix };
+        }
+      }
+    }
+
+    return { store: stores[0], key: null };
   }
 
-  // Read existing save data into checkboxes
   function loadCurrentState() {
-    const key = findSaveKey(slotSelect.value);
-    const raw = localStorage.getItem(key) || "";
+    const { store, key } = getStorageTarget(slotSelect.value);
+    if (!key || !store.getItem(key)) {
+      statusEl.style.color = "#ffbe0b";
+      statusEl.textContent = "No save found for Slot " + slotSelect.value + ". Start a New Game in-game first!";
+      update2Chars.forEach(c => {
+        document.getElementById(`char-${c.id}`).checked = false;
+      });
+      return;
+    }
+
+    const raw = store.getItem(key);
+    statusEl.style.color = "#9ef01a";
+    statusEl.textContent = "Found save key: " + key;
+
     update2Chars.forEach(c => {
       const regex = new RegExp(`^${c.id}have=1`, "m");
       document.getElementById(`char-${c.id}`).checked = regex.test(raw);
     });
   }
 
+  btn.onclick = () => {
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+    loadCurrentState();
+  };
+
   slotSelect.onchange = loadCurrentState;
 
-  // Check all boxes
   document.getElementById("fnafw-unlock-all").onclick = () => {
     update2Chars.forEach(c => {
       document.getElementById(`char-${c.id}`).checked = true;
     });
   };
 
-  // Write changes to localStorage and reload
   document.getElementById("fnafw-apply").onclick = () => {
-    const key = findSaveKey(slotSelect.value);
-    let raw = localStorage.getItem(key);
+    const { store, key } = getStorageTarget(slotSelect.value);
 
-    if (!raw) {
-      alert("No save file found in Slot " + slotSelect.value + "! Start a new game in that slot first.");
+    if (!key) {
+      alert("No FNaF World save file detected in browser storage! Click 'New Game' in Slot " + slotSelect.value + " first, play for 2 seconds, then try again.");
       return;
     }
 
+    let raw = store.getItem(key) || "[fnafw" + slotSelect.value + "]\nstarted=1\n";
     let lines = raw.split(/\r?\n/);
 
     update2Chars.forEach(c => {
       const checked = document.getElementById(`char-${c.id}`).checked;
       const prefix = `${c.id}have=`;
-      lines = lines.filter(line => !line.startsWith(prefix));
+      lines = lines.filter(line => !line.trim().startsWith(prefix));
       if (checked) {
         lines.push(`${c.id}have=1`);
       }
     });
 
-    localStorage.setItem(key, lines.join("\n"));
-    location.reload();
+    store.setItem(key, lines.join("\n"));
+    statusEl.textContent = "Saved to " + key + "! Reloading...";
+    setTimeout(() => location.reload(), 300);
   };
 })();
 </script>
