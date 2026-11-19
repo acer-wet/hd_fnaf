@@ -334,10 +334,10 @@
     };
 </script>
 </html>
-<!-- FNAF WORLD HTML5 MOD MENU V8 (COMPACT + ANTI-FREEZE + WORKING WARP) -->
+<!-- FNAF WORLD HTML5 MOD MENU V9 (AUTO-DETECT INI + NO 3-STRIPE BUG + WARP FIX) -->
 <div id="fnaf-mod-menu" style="position:fixed; top:8px; right:8px; width:215px; background:#14141f; color:#fff; border:2px solid #00e676; border-radius:6px; padding:8px; font-family:sans-serif; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.85); font-size:11px;">
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:6px;">
-    <strong style="color:#00e676; font-size:12px;">FNaF World Mod v8</strong>
+    <strong style="color:#00e676; font-size:12px;">FNaF World Mod v9</strong>
     <button onclick="toggleModMenu()" style="background:#333; color:#fff; border:none; border-radius:3px; padding:1px 6px; cursor:pointer; font-size:11px;">_</button>
   </div>
 
@@ -345,14 +345,14 @@
     <div style="margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
       <label>Slot:</label>
       <select id="mod-slot" style="background:#222; color:#fff; border:1px solid #555; padding:1px 4px; border-radius:3px; font-size:11px;">
-        <option value="1">Slot 1</option>
-        <option value="2">Slot 2</option>
-        <option value="3">Slot 3</option>
+        <option value="1">Slot 1 (fnafw1)</option>
+        <option value="2">Slot 2 (fnafw2)</option>
+        <option value="3">Slot 3 (fnafw3)</option>
       </select>
     </div>
 
     <button onclick="unlockAllCharacters()" style="width:100%; margin-bottom:4px; padding:5px; background:#1565c0; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-      All 48 Chars (Anti-Freeze)
+      All 48 Chars (Fix Stripes)
     </button>
 
     <div style="display:flex; gap:4px; margin-bottom:4px;">
@@ -402,18 +402,17 @@
   let activeRuntime = null;
   let liveIniObjects = [];
 
-  // Overworld coordinates for each FNaF World zone
   const WARP_COORDS = {
-    "1": { area: 1, x: 1850, y: 2150 }, // Fazbear Hills
-    "2": { area: 2, x: 1100, y: 2650 }, // Choppy's Woods
-    "3": { area: 3, x: 1150, y: 1250 }, // Dusting Fields
-    "4": { area: 4, x: 2650, y: 2650 }, // Lilygear Lake
-    "5": { area: 5, x: 2700, y: 1850 }, // Blacktomb Yard
-    "6": { area: 6, x: 2450, y: 1150 }, // Deep-Metal Mine
-    "7": { area: 7, x: 3250, y: 1200 }  // Pinwheel Circus
+    "1": { area: 1, x: 1850, y: 2150 },
+    "2": { area: 2, x: 1100, y: 2650 },
+    "3": { area: 3, x: 1150, y: 1250 },
+    "4": { area: 4, x: 2650, y: 2650 },
+    "5": { area: 5, x: 2700, y: 1850 },
+    "6": { area: 6, x: 2450, y: 1150 },
+    "7": { area: 7, x: 3250, y: 1200 }
   };
 
-  // 1. HOOK INTO CLICKTEAM FUSION HTML5 RUNTIME
+  // 1. HOOK CLICKTEAM RUNTIME
   const hookInterval = setInterval(() => {
     if (window.Runtime && window.Runtime.rhApp) {
       activeRuntime = window.Runtime;
@@ -446,29 +445,35 @@
     }
   }
 
-  function getBaseName() {
+  // Auto-detect all matching storage key prefixes used by this HTML5 port
+  function getMatchingPrefixes(slot) {
+    const prefixes = new Set([
+      `fnafw${slot}.`,
+      `fnafw${slot}.fnafw${slot}.`,
+      `freddyw.s${slot}.`
+    ]);
+
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.includes('freddyw')) {
-        return k.split('.')[0];
+      if (!k) continue;
+      if (k.includes(`fnafw${slot}`) || k.includes('freddyw')) {
+        const lastDot = k.lastIndexOf('.');
+        if (lastDot !== -1) {
+          prefixes.add(k.substring(0, lastDot + 1));
+        }
       }
     }
-    return 'freddyw';
+    return Array.from(prefixes);
   }
 
-  function getSavePrefix() {
-    const slot = document.getElementById('mod-slot').value;
-    return `${getBaseName()}.s${slot}.`;
-  }
-
-  // Writes to localStorage AND Clickteam's active CRunIni RAM cache
+  // Writes to ALL matching localStorage INI namespaces + Clickteam RAM INI objects
   function injectLiveValue(key, val) {
     const slot = document.getElementById('mod-slot').value;
-    const base = getBaseName();
-    const prefix = `${base}.s${slot}.`;
+    const prefixes = getMatchingPrefixes(slot);
 
-    localStorage.setItem(prefix + key, String(val));
-    localStorage.setItem(`${base}.${key}`, String(val));
+    prefixes.forEach(prefix => {
+      localStorage.setItem(prefix + key, String(val));
+    });
 
     if (activeRuntime && activeRuntime.rhApp) {
       findLiveIniExtensions(activeRuntime.rhApp);
@@ -476,14 +481,18 @@
 
     liveIniObjects.forEach(iniExt => {
       try {
-        if (typeof iniExt.setValue === 'function') {
-          iniExt.setValue(`s${slot}`, key, Number(val));
-          iniExt.setValue('', key, Number(val));
-        }
-        if (iniExt.ini && iniExt.ini.sections) {
-          if (!iniExt.ini.sections[`s${slot}`]) iniExt.ini.sections[`s${slot}`] = {};
-          iniExt.ini.sections[`s${slot}`][key] = String(val);
-        }
+        const sectionsToTry = [`fnafw${slot}`, `s${slot}`, ''];
+        sectionsToTry.forEach(sec => {
+          if (typeof iniExt.setValue === 'function') {
+            iniExt.setValue(sec, key, Number(val));
+          }
+          if (iniExt.ini && iniExt.ini.sections) {
+            if (!iniExt.ini.sections[sec]) iniExt.ini.sections[sec] = {};
+            iniExt.ini.sections[sec][key] = String(val);
+          }
+        });
+        // Force Clickteam INI object to save/flush to storage if method exists
+        if (typeof iniExt.saveIni === 'function') iniExt.saveIni();
       } catch (e) {}
     });
   }
@@ -499,7 +508,7 @@
   function setStatus(msg) {
     const el = document.getElementById('mod-status');
     el.textContent = msg;
-    setTimeout(() => { el.textContent = "Runtime Hooked! Ready."; }, 2500);
+    setTimeout(() => { el.textContent = "Runtime Hooked! Ready."; }, 3000);
   }
 
   window.toggleModMenu = function() {
@@ -507,32 +516,25 @@
     body.style.display = body.style.display === 'none' ? 'block' : 'none';
   };
 
-  // 1. ALL 48 CHARACTERS + PARTY & CRYING CHILD ANTI-FREEZE
+  // 1. ALL 48 CHARACTERS + FIX 3 STRIPES & CRYING CHILD FREEZE
   window.unlockAllCharacters = function() {
-    const prefix = getSavePrefix();
     for (let i = 1; i <= 48; i++) {
       injectLiveValue(`${i}have`, '1');
-      
-      // Ensure valid numeric level & XP so Party Screen and Crying Child (#40) never divide-by-zero or hang
-      const rawLv = localStorage.getItem(prefix + `${i}lv`);
-      const parsedLv = parseInt(rawLv, 10);
-      if (isNaN(parsedLv) || parsedLv < 1) {
-        injectLiveValue(`${i}lv`, '1');
-      }
-      const rawXp = localStorage.getItem(prefix + `${i}xp`);
-      if (isNaN(parseInt(rawXp, 10))) {
-        injectLiveValue(`${i}xp`, '0');
-      }
+      // Set BOTH 'lv' and 'level' + 'next' so the 3-stripe empty-level bug never triggers
+      injectLiveValue(`${i}lv`, '10');
+      injectLiveValue(`${i}level`, '10');
+      injectLiveValue(`${i}next`, '0');
     }
 
-    // Reset active party slots 1-8 to clean IDs (1-8) so no corrupt/zero slot hangs the Party menu
+    // Ensure valid party slots 1-8 so Crying Child (#40) and Party Screen never hang
     for (let p = 1; p <= 8; p++) {
       injectLiveValue(`p${p}`, String(p));
       injectLiveValue(`s${p}`, String(p));
     }
 
+    injectLiveValue('newgame', '0');
     forceEngineSync();
-    setStatus("All 48 Chars + Anti-Freeze applied!");
+    setStatus("48 Chars Unlocked (Lv.10)! Re-enter Party.");
   };
 
   // 2. ALL CHIPS
@@ -548,6 +550,7 @@
   window.unlockAllBytes = function() {
     for (let b = 1; b <= 21; b++) {
       injectLiveValue(`b${b}`, '1');
+      injectLiveValue(`p${b}`, '1');
     }
     injectLiveValue('tokens', '99999');
     forceEngineSync();
@@ -560,6 +563,11 @@
       injectLiveValue(`trophy${t}`, '1');
       injectLiveValue(`t${t}`, '1');
     }
+    // Also write to 'info' INI file for main menu trophies
+    ['info.', 'info.info.'].forEach(p => {
+      for (let t = 1; t <= 9; t++) localStorage.setItem(`${p}trophy${t}`, '1');
+      localStorage.setItem(`${p}select all`, '1');
+    });
     forceEngineSync();
     setStatus("All 9 Trophies unlocked!");
   };
@@ -568,6 +576,8 @@
   window.unlockClockEnding = function() {
     for (let clk = 1; clk <= 5; clk++) {
       injectLiveValue(`clock${clk}`, '1');
+      injectLiveValue(`find${clk}`, '1');
+      injectLiveValue(`g${clk}`, '1');
     }
     injectLiveValue('clocks', '5');
     injectLiveValue('portal', '1');
@@ -575,30 +585,26 @@
     setStatus("All 5 Clocks & Portal unlocked!");
   };
 
-  // 6. WORKING LIVE OVERWORLD WARP
+  // 6. OVERWORLD WARP
   window.warpPlayer = function() {
     const locKey = document.getElementById('warp-location').value;
     const dest = WARP_COORDS[locKey];
     if (!dest) return;
 
-    // Update save INI values
     injectLiveValue('area', dest.area);
     injectLiveValue('x', dest.x);
     injectLiveValue('y', dest.y);
 
-    // Move player & camera objects live inside Clickteam's active overworld frame
     if (activeRuntime && activeRuntime.rhApp && activeRuntime.rhApp.rhObjectList) {
-      const app = activeRuntime.rhApp;
-      for (let i = 0; i < app.rhObjectList.length; i++) {
-        const obj = app.rhObjectList[i];
-        // Player active object in FNaF World overworld uses 8-direction movement (type 2) or sits near player bounds
-if (obj && obj.roc && obj.rom && obj.rom.rmMovement && obj.rom.rmMovement.mvType === 2) {
+      const app = activeRuntime.rhApp;for (let i = 0; i < app.rhObjectList.length; i++) {
+const obj = app.rhObjectList[i];
+// Move any active player-controlled object (8-direction movement or player dimensions)
+if (obj && obj.roc && obj.rom && obj.rom.rmMovement && (obj.rom.rmMovement.mvType === 2 || obj.rom.rmMovement.mvType === 3)) {
 obj.hoX = dest.x;
 obj.hoY = dest.y;
 obj.roc.rcChanged = true;
 }
 }
-// Recenter frame camera if supported
 if (typeof app.setDisplay === 'function') {
 app.setDisplay(dest.x - 400, dest.y - 240, -1, -1);
 }
@@ -607,3 +613,4 @@ forceEngineSync();
 setStatus(Warped to Area ${dest.area}!);
 };
 })();
+
