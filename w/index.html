@@ -334,27 +334,36 @@
     };
 </script>
 </html>
-<!-- FNAF WORLD HTML5 MOD MENU V9 (AUTO-DETECT INI + NO 3-STRIPE BUG + WARP FIX) -->
-<div id="fnaf-mod-menu" style="position:fixed; top:8px; right:8px; width:215px; background:#14141f; color:#fff; border:2px solid #00e676; border-radius:6px; padding:8px; font-family:sans-serif; z-index:999999; box-shadow:0 4px 12px rgba(0,0,0,0.85); font-size:11px;">
-  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:6px;">
-    <strong style="color:#00e676; font-size:12px;">FNaF World Mod v9</strong>
-    <button onclick="toggleModMenu()" style="background:#333; color:#fff; border:none; border-radius:3px; padding:1px 6px; cursor:pointer; font-size:11px;">_</button>
+<!-- FNAF WORLD HTML5 MOD MENU V11 (ON/OFF TOGGLE + MAX LEVEL + BOSS WARP + FULL UNLOCK) -->
+<div id="fnaf-mod-wrapper" style="position:fixed; top:8px; right:8px; z-index:999999; font-family:sans-serif; font-size:11px;">
+  
+  <!-- TOP ON/OFF TOGGLE BAR -->
+  <div style="display:flex; justify-content:flex-end; gap:4px; margin-bottom:4px;">
+    <button id="btn-menu-on" onclick="setModMenuOpen(true)" style="background:#00e676; color:#000; border:none; border-radius:4px; padding:3px 8px; font-weight:bold; cursor:pointer; font-size:10px; box-shadow:0 2px 6px rgba(0,0,0,0.6);">
+      MENU ON
+    </button>
+    <button id="btn-menu-off" onclick="setModMenuOpen(false)" style="background:#d32f2f; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-weight:bold; cursor:pointer; font-size:10px; box-shadow:0 2px 6px rgba(0,0,0,0.6);">
+      MENU OFF
+    </button>
   </div>
 
-  <div id="fnaf-mod-body">
-    <div style="margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
-      <label>Slot:</label>
-      <select id="mod-slot" style="background:#222; color:#fff; border:1px solid #555; padding:1px 4px; border-radius:3px; font-size:11px;">
-        <option value="1">Slot 1 (fnafw1)</option>
-        <option value="2">Slot 2 (fnafw2)</option>
-        <option value="3">Slot 3 (fnafw3)</option>
+  <!-- MAIN COMPACT MOD PANEL -->
+  <div id="fnaf-mod-menu" style="width:215px; background:#14141f; color:#fff; border:2px solid #00e676; border-radius:6px; padding:8px; box-shadow:0 4px 12px rgba(0,0,0,0.85);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:4px; margin-bottom:6px;">
+      <strong style="color:#00e676; font-size:12px;">FNaF World Mod v11</strong>
+      <select id="mod-slot" style="background:#222; color:#fff; border:1px solid #555; padding:1px 4px; border-radius:3px; font-size:10px;">
+        <option value="1">Slot 1</option>
+        <option value="2">Slot 2</option>
+        <option value="3">Slot 3</option>
       </select>
     </div>
 
+    <!-- ALL 48 CHARACTERS + ANTI-FREEZE -->
     <button onclick="unlockAllCharacters()" style="width:100%; margin-bottom:4px; padding:5px; background:#1565c0; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-      All 48 Chars (Fix Stripes)
+      All 48 Chars (Fix Freeze)
     </button>
 
+    <!-- CHIPS & BYTES ROW -->
     <div style="display:flex; gap:4px; margin-bottom:4px;">
       <button onclick="unlockAllChips()" style="flex:1; padding:5px; background:#5e35b1; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
         All Chips
@@ -364,17 +373,19 @@
       </button>
     </div>
 
-    <button onclick="unlockAllTrophies()" style="width:100%; margin-bottom:4px; padding:5px; background:#ef6c00; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-      Unlock All Trophies
-    </button>
+    <!-- MAX LEVEL & 999,999 TOKENS ROW -->
+    <div style="display:flex; gap:4px; margin-bottom:6px;">
+      <button onclick="setMaxLevel()" style="flex:1; padding:5px; background:#2e7d32; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
+        Max Level
+      </button>
+      <button onclick="giveMaxTokens()" style="flex:1; padding:5px; background:#f9a825; color:#000; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
+        999,999 Tokens
+      </button>
+    </div>
 
-    <button onclick="unlockClockEnding()" style="width:100%; margin-bottom:6px; padding:5px; background:#2e7d32; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:11px;">
-      Unlock Clock Ending
-    </button>
-
-    <!-- Live Overworld Warp Section -->
-    <div style="border-top:1px solid #333; padding-top:6px; margin-bottom:5px;">
-      <label style="display:block; margin-bottom:3px; color:#aaa; font-size:10px;">Overworld Area Warp:</label>
+    <!-- AREA WARP -->
+    <div style="border-top:1px solid #333; padding-top:5px; margin-bottom:5px;">
+      <label style="display:block; margin-bottom:2px; color:#aaa; font-size:10px;">Area Warp:</label>
       <div style="display:flex; gap:4px;">
         <select id="warp-location" style="flex:1; background:#222; color:#fff; border:1px solid #555; padding:2px; border-radius:3px; font-size:10px;">
           <option value="1">1. Fazbear Hills</option>
@@ -385,12 +396,33 @@
           <option value="6">6. Deep-Metal Mine</option>
           <option value="7">7. Pinwheel Circus</option>
         </select>
-        <button onclick="warpPlayer()" style="padding:3px 7px; background:#d84315; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:10px;">
+        <button onclick="warpToArea()" style="padding:3px 8px; background:#d84315; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:10px;">
           Warp
         </button>
       </div>
     </div>
 
+    <!-- BOSS WARP -->
+    <div style="border-top:1px solid #333; padding-top:5px; margin-bottom:5px;">
+      <label style="display:block; margin-bottom:2px; color:#ff8a80; font-size:10px;">Boss Warp:</label>
+      <div style="display:flex; gap:4px;">
+        <select id="boss-location" style="flex:1; background:#222; color:#fff; border:1px solid #555; padding:2px; border-radius:3px; font-size:10px;">
+          <option value="auto">Auto-Chipper</option>
+          <option value="bouncer">Bouncer</option>
+          <option value="browboy">Browboy</option>
+          <option value="madendo">Mad Endo</option>
+          <option value="supergoon">Supergoon</option>
+          <option value="security">Security (Final)</option>
+          <option value="scott">Scott Cawthon</option>
+          <option value="chica">Chica's Magic Rainbow</option>
+        </select>
+        <button onclick="warpToBoss()" style="padding:3px 8px; background:#b71c1c; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:10px;">
+          Boss
+        </button>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
     <div id="mod-status" style="font-size:10px; color:#00e676; min-height:14px; text-align:center;">
       Scanning Clickteam Runtime...
     </div>
@@ -402,7 +434,7 @@
   let activeRuntime = null;
   let liveIniObjects = [];
 
-  const WARP_COORDS = {
+  const AREA_COORDS = {
     "1": { area: 1, x: 1850, y: 2150 },
     "2": { area: 2, x: 1100, y: 2650 },
     "3": { area: 3, x: 1150, y: 1250 },
@@ -410,6 +442,17 @@
     "5": { area: 5, x: 2700, y: 1850 },
     "6": { area: 6, x: 2450, y: 1150 },
     "7": { area: 7, x: 3250, y: 1200 }
+  };
+
+  const BOSS_COORDS = {
+    "auto":      { area: 2, x: 960,  y: 2480, bossId: 1, name: "Auto-Chipper" },
+    "bouncer":   { area: 3, x: 980,  y: 1120, bossId: 2, name: "Bouncer" },
+    "browboy":   { area: 4, x: 2820, y: 2460, bossId: 3, name: "Browboy" },
+    "madendo":   { area: 5, x: 2850, y: 1700, bossId: 4, name: "Mad Endo" },
+    "supergoon": { area: 6, x: 2300, y: 1020, bossId: 5, name: "Supergoon" },
+    "security":  { area: 7, x: 3420, y: 980,  bossId: 6, name: "Security" },
+    "scott":     { area: 7, x: 3560, y: 860,  bossId: 7, name: "Scott Cawthon" },
+    "chica":     { area: 7, x: 3650, y: 780,  bossId: 8, name: "Chica's Rainbow" }
   };
 
   // 1. HOOK CLICKTEAM RUNTIME
@@ -445,7 +488,6 @@
     }
   }
 
-  // Auto-detect all matching storage key prefixes used by this HTML5 port
   function getMatchingPrefixes(slot) {
     const prefixes = new Set([
       `fnafw${slot}.`,
@@ -466,7 +508,6 @@
     return Array.from(prefixes);
   }
 
-  // Writes to ALL matching localStorage INI namespaces + Clickteam RAM INI objects
   function injectLiveValue(key, val) {
     const slot = document.getElementById('mod-slot').value;
     const prefixes = getMatchingPrefixes(slot);
@@ -491,10 +532,30 @@
             iniExt.ini.sections[sec][key] = String(val);
           }
         });
-        // Force Clickteam INI object to save/flush to storage if method exists
         if (typeof iniExt.saveIni === 'function') iniExt.saveIni();
       } catch (e) {}
     });
+  }
+
+  function moveOverworldPlayer(dest) {
+    injectLiveValue('area', dest.area);
+    injectLiveValue('x', dest.x);
+    injectLiveValue('y', dest.y);
+
+    if (activeRuntime && activeRuntime.rhApp && activeRuntime.rhApp.rhObjectList) {
+      const app = activeRuntime.rhApp;
+      for (let i = 0; i < app.rhObjectList.length; i++) {
+        const obj = app.rhObjectList[i];
+        if (obj && obj.roc && obj.rom && obj.rom.rmMovement && (obj.rom.rmMovement.mvType === 2 || obj.rom.rmMovement.mvType === 3)) {
+          obj.hoX = dest.x;
+          obj.hoY = dest.y;
+          obj.roc.rcChanged = true;
+        }
+      }
+      if (typeof app.setDisplay === 'function') {
+        app.setDisplay(dest.x - 400, dest.y - 240, -1, -1);
+      }
+    }
   }
 
   function forceEngineSync() {
@@ -508,109 +569,91 @@
   function setStatus(msg) {
     const el = document.getElementById('mod-status');
     el.textContent = msg;
-    setTimeout(() => { el.textContent = "Runtime Hooked! Ready."; }, 3000);
-  }
-
-  window.toggleModMenu = function() {
-    const body = document.getElementById('fnaf-mod-body');
-    body.style.display = body.style.display === 'none' ? 'block' : 'none';
-  };
-
-  // 1. ALL 48 CHARACTERS + FIX 3 STRIPES & CRYING CHILD FREEZE
-  window.unlockAllCharacters = function() {
-    for (let i = 1; i <= 48; i++) {
-      injectLiveValue(`${i}have`, '1');
-      // Set BOTH 'lv' and 'level' + 'next' so the 3-stripe empty-level bug never triggers
-      injectLiveValue(`${i}lv`, '10');
-      injectLiveValue(`${i}level`, '10');
-      injectLiveValue(`${i}next`, '0');
-    }
-
-    // Ensure valid party slots 1-8 so Crying Child (#40) and Party Screen never hang
-    for (let p = 1; p <= 8; p++) {
-      injectLiveValue(`p${p}`, String(p));
-      injectLiveValue(`s${p}`, String(p));
-    }
-
-    injectLiveValue('newgame', '0');
-    forceEngineSync();
-    setStatus("48 Chars Unlocked (Lv.10)! Re-enter Party.");
-  };
-
-  // 2. ALL CHIPS
-  window.unlockAllChips = function() {
-    for (let c = 1; c <= 21; c++) {
-      injectLiveValue(`c${c}`, '1');
-    }
-    forceEngineSync();
-    setStatus("All 21 Chips unlocked!");
-  };
-
-  // 3. ALL BYTES + TOKENS
-  window.unlockAllBytes = function() {
-    for (let b = 1; b <= 21; b++) {
-      injectLiveValue(`b${b}`, '1');
-      injectLiveValue(`p${b}`, '1');
-    }
-    injectLiveValue('tokens', '99999');
-    forceEngineSync();
-    setStatus("All 21 Bytes & Tokens unlocked!");
-  };
-
-  // 4. ALL TROPHIES
-  window.unlockAllTrophies = function() {
-    for (let t = 1; t <= 9; t++) {
-      injectLiveValue(`trophy${t}`, '1');
-      injectLiveValue(`t${t}`, '1');
-    }
-    // Also write to 'info' INI file for main menu trophies
-    ['info.', 'info.info.'].forEach(p => {
-      for (let t = 1; t <= 9; t++) localStorage.setItem(`${p}trophy${t}`, '1');
-      localStorage.setItem(`${p}select all`, '1');
-    });
-    forceEngineSync();
-    setStatus("All 9 Trophies unlocked!");
-  };
-
-  // 5. CLOCK ENDING
-  window.unlockClockEnding = function() {
-    for (let clk = 1; clk <= 5; clk++) {
-      injectLiveValue(`clock${clk}`, '1');
-      injectLiveValue(`find${clk}`, '1');
-      injectLiveValue(`g${clk}`, '1');
-    }
-    injectLiveValue('clocks', '5');
-    injectLiveValue('portal', '1');
-    forceEngineSync();
-    setStatus("All 5 Clocks & Portal unlocked!");
-  };
-
-  // 6. OVERWORLD WARP
-  window.warpPlayer = function() {
-    const locKey = document.getElementById('warp-location').value;
-    const dest = WARP_COORDS[locKey];
-    if (!dest) return;
-
-    injectLiveValue('area', dest.area);
-    injectLiveValue('x', dest.x);
-    injectLiveValue('y', dest.y);
-
-    if (activeRuntime && activeRuntime.rhApp && activeRuntime.rhApp.rhObjectList) {
-      const app = activeRuntime.rhApp;for (let i = 0; i < app.rhObjectList.length; i++) {
-const obj = app.rhObjectList[i];
-// Move any active player-controlled object (8-direction movement or player dimensions)
-if (obj && obj.roc && obj.rom && obj.rom.rmMovement && (obj.rom.rmMovement.mvType === 2 || obj.rom.rmMovement.mvType === 3)) {
-obj.hoX = dest.x;
-obj.hoY = dest.y;
-obj.roc.rcChanged = true;
+setTimeout(() => { el.textContent = "Runtime Hooked! Ready."; }, 3000);
 }
+// ON / OFF MENU TOGGLE
+window.setModMenuOpen = function(isOpen) {
+const menu = document.getElementById('fnaf-mod-menu');
+const btnOn = document.getElementById('btn-menu-on');
+const btnOff = document.getElementById('btn-menu-off');
+if (isOpen) {
+menu.style.display = 'block';
+btnOn.style.opacity = '1';
+btnOff.style.opacity = '0.6';
+} else {
+menu.style.display = 'none';
+btnOn.style.opacity = '0.85';
+btnOff.style.opacity = '1';
 }
-if (typeof app.setDisplay === 'function') {
-app.setDisplay(dest.x - 400, dest.y - 240, -1, -1);
+};
+// 1. ALL 48 CHARACTERS + PARTY SCREEN & CRYING CHILD ANTI-FREEZE
+window.unlockAllCharacters = function() {
+for (let i = 1; i <= 48; i++) {
+injectLiveValue(${i}have, '1');
+injectLiveValue(${i}lv, '25');
+injectLiveValue(${i}level, '25');
+injectLiveValue(${i}next, '0');
 }
+for (let p = 1; p <= 8; p++) {
+injectLiveValue(p${p}, String(p));
+injectLiveValue(s${p}, String(p));
 }
+injectLiveValue('newgame', '0');
+forceEngineSync();
+setStatus("All 48 Chars Unlocked! Re-open Party.");
+};
+// 2. ALL CHIPS
+window.unlockAllChips = function() {
+for (let c = 1; c <= 21; c++) {
+injectLiveValue(c${c}, '1');
+}
+forceEngineSync();
+setStatus("All 21 Chips unlocked!");
+};
+// 3. ALL BYTES
+window.unlockAllBytes = function() {
+for (let b = 1; b <= 21; b++) {
+injectLiveValue(b${b}, '1');
+injectLiveValue(p${b}, '1');
+}
+forceEngineSync();
+setStatus("All 21 Bytes unlocked!");
+};
+// 4. MAX LEVEL (LV. 999 FOR ALL 48 CHARACTERS)
+window.setMaxLevel = function() {
+for (let i = 1; i <= 48; i++) {
+injectLiveValue(${i}lv, '999');
+injectLiveValue(${i}level, '999');
+injectLiveValue(${i}next, '0');
+injectLiveValue(${i}xp, '9999999');
+}
+forceEngineSync();
+setStatus("All 48 Chars set to Max Level (999)!");
+};
+// 5. 999,999 TOKENS
+window.giveMaxTokens = function() {
+injectLiveValue('tokens', '999999');
+injectLiveValue('faztokens', '999999');
+forceEngineSync();
+setStatus("999,999 Tokens added!");
+};
+// 6. AREA WARP
+window.warpToArea = function() {
+const locKey = document.getElementById('warp-location').value;
+const dest = AREA_COORDS[locKey];
+if (!dest) return;
+moveOverworldPlayer(dest);
 forceEngineSync();
 setStatus(Warped to Area ${dest.area}!);
 };
+// 7. BOSS WARP
+window.warpToBoss = function() {
+const bossKey = document.getElementById('boss-location').value;
+const dest = BOSS_COORDS[bossKey];
+if (!dest) return;
+injectLiveValue(boss${dest.bossId}, '0');
+moveOverworldPlayer(dest);
+forceEngineSync();
+setStatus(Warped to ${dest.name}!);
+};
 })();
-
