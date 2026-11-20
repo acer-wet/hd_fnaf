@@ -334,7 +334,7 @@
         });
     };
 </script>
-<!-- FNaF World Update 2 Compact Mod Menu (All Bugs Fixed + Working Reset) -->
+<!-- FNaF World Update 2 Compact Mod Menu (Clean Syntax Fix) -->
 <style>
   #fnafw-mod-btn {
     position: fixed;
@@ -573,7 +573,6 @@
     statusEl.textContent = "Queued Boss Warp (Save to apply)";
   };
 
-  // Working Reset Slot Button
   document.getElementById("fnafw-reset").onclick = () => {
     const slot = slotSelect.value;
     const key = getSaveKey(slot);
@@ -613,8 +612,8 @@
       return;
     }
 
-    // Properly grab the first line string
-    raw = raw.split(/\r?\n/)[0];
+    // Grab the first line safely without bracket indexing
+    raw = raw.split(/\r?\n/).shift() || "";
 
     const sectionIdx = raw.lastIndexOf("[fnafw]");
     const beforeSection = sectionIdx !== -1 ? raw.slice(0, sectionIdx) : "";
@@ -624,7 +623,7 @@
     const headerPos = tokens.indexOf("[fnafw]");
     const baseInsert = headerPos !== -1 ? headerPos + 1 : 1;
 
-    // 1. Update 2 Characters + required stat keys (lv, next, xp) so party swap doesn't hang
+    // 1. Update 2 Characters + required stat keys
     tokens = tokens.filter(t => {
       return !update2Chars.some(c =>
         t === `${c.id}have=1` ||
@@ -643,7 +642,7 @@
       }
     });
 
-    // Also ensure characters 1..40 exist in the save if U2 is unlocked so row-rendering loop doesn't hang
+    // Ensure base roster 1..40 exists when U2 is unlocked to prevent party-row freeze
     if (anyU2Checked) {
       for (let id = 1; id <= 40; id++) {
         if (!tokens.includes(`${id}have=1`)) {
@@ -678,10 +677,10 @@
           );
           const newLv = curLv + addPartyLevels;
           setOrInsertToken(tokens, `${charId}lv`, newLv, baseInsert);
-setOrInsertToken(tokens, lv${charId}, newLv, baseInsert);
-}
-}
-}
+          setOrInsertToken(tokens, `lv${charId}`, newLv, baseInsert);
+        }
+      }
+    }
 // 5. Boss Warp (Halloween Backstage / Geist Lair)
 if (warpBoss) {
 setOrInsertToken(tokens, "portal", 1, baseInsert);
