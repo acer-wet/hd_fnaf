@@ -334,7 +334,7 @@
         });
     };
 </script>
-<!-- FNaF World Update 2 Character Mod Menu (Anti-Overwrite Fix) -->
+<!-- FNaF World Update 2 Character Mod Menu + Save Inspector -->
 <style>
   #fnafw-mod-btn {
     position: fixed;
@@ -356,7 +356,7 @@
     position: fixed;
     top: 52px;
     right: 12px;
-    width: 270px;
+    width: 280px;
     z-index: 999999;
     background: rgba(20, 20, 30, 0.96);
     color: #fff;
@@ -396,8 +396,20 @@
     cursor: pointer;
     border-radius: 4px;
   }
-  .mod-actions button:hover {
-    background: #e05e00;
+  .mod-actions button.secondary {
+    background: #3a3a52;
+  }
+  #fnafw-debug-box {
+    display: none;
+    width: 100%;
+    height: 110px;
+    margin-top: 8px;
+    background: #111;
+    color: #0f0;
+    border: 1px solid #555;
+    font-family: monospace;
+    font-size: 11px;
+    box-sizing: border-box;
   }
   #fnafw-status {
     margin-top: 8px;
@@ -433,8 +445,10 @@
   <div class="mod-actions">
     <button id="fnafw-unlock-all">Select All Update 2</button>
     <button id="fnafw-apply">Save & Reload Game</button>
+    <button id="fnafw-inspect" class="secondary">Show Raw Save Data</button>
   </div>
 
+  <textarea id="fnafw-debug-box" readonly></textarea>
   <div id="fnafw-status">Ready</div>
 </div>
 
@@ -451,13 +465,10 @@
     { id: 48, name: "Purple Guy" }
   ];
 
-  // Lock flag to stop Clickteam from overwriting our changes during page reload
   let lockSaveWrites = false;
   const origSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function(k, v) {
-    if (lockSaveWrites && k && k.toLowerCase().includes("fnafw")) {
-      return; // Block Clickteam from overwriting our modded save on exit
-    }
+    if (lockSaveWrites && k && k.toLowerCase().includes("fnafw")) return;
     return origSetItem.apply(this, arguments);
   };
 
@@ -466,6 +477,7 @@
   const list = document.getElementById("fnafw-char-list");
   const slotSelect = document.getElementById("fnafw-slot");
   const statusEl = document.getElementById("fnafw-status");
+  const debugBox = document.getElementById("fnafw-debug-box");
 
   update2Chars.forEach(c => {
     const row = document.createElement("div");
@@ -491,13 +503,12 @@
     const raw = localStorage.getItem(key);
     if (!raw) {
       statusEl.style.color = "#ffbe0b";
-      statusEl.textContent = "No save in " + key + " yet.";
-      update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = false);
+      statusEl.textContent = "No save in " + key;
       return;
     }
-
     statusEl.style.color = "#9ef01a";
     statusEl.textContent = "Loaded: " + key;
+    debugBox.value = raw;
 
     update2Chars.forEach(c => {
       const regex = new RegExp(`^${c.id}have\\s*=\\s*1`, "m");
@@ -512,6 +523,11 @@
 
   slotSelect.onchange = loadCurrentState;
 
+  document.getElementById("fnafw-inspect").onclick = () => {
+    debugBox.style.display = debugBox.style.display === "block" ? "none" : "block";
+    loadCurrentState();
+  };
+
   document.getElementById("fnafw-unlock-all").onclick = () => {
     update2Chars.forEach(c => {
       document.getElementById(`char-${c.id}`).checked = true;
@@ -524,29 +540,31 @@
     let raw = localStorage.getItem(key);
 
     if (!raw) {
-      alert("Start a New Game in Slot " + slot + " first so the base save file exists!");
+      alert("Start a New Game in Slot " + slot + " first!");
       return;
     }
 
-    // Preserve Clickteam's exact line endings (\r\n vs \n)
     const eol = raw.includes("\r\n") ? "\r\n" : "\n";
     let lines = raw.split(/\r?\n/);
 
-    // Remove existing 41have..48have entries
     lines = lines.filter(line => {
       const trimmed = line.trim();
-      return !update2Chars.some(c => trimmed.startsWith(`${c.id}have=`));
+      return !update2Chars.some(c =>
+        trimmed.startsWith(`${c.id}have=`) ||
+        trimmed.startsWith(`${c.id}lv=`) ||
+        trimmed.startsWith(`${c.id}exp=`)
+      );
     });
 
-    // Build new entries for checked characters
     const additions = [];
     update2Chars.forEach(c => {
       if (document.getElementById(`char-${c.id}`).checked) {
         additions.push(`${c.id}have=1`);
+        additions.push(`${c.id}lv=1`);
+        additions.push(`${c.id}exp=0`);
       }
     });
 
-    // Insert right below the [fnafwX] INI header if present, otherwise append
     const headerIndex = lines.findIndex(l => l.trim().toLowerCase() === `[fnafw${slot}]`);
     if (headerIndex !== -1) {
       lines.splice(headerIndex + 1, 0, ...additions);
@@ -554,12 +572,9 @@
       lines.push(...additions);
     }
 
-    // Write directly using the original unblocked setItem
     origSetItem.call(localStorage, key, lines.join(eol));
-
-    // Lock writes so Clickteam cannot overwrite our save when the page reloads
     lockSaveWrites = true;
-    statusEl.textContent = "Saved & locked! Reloading...";
+    statusEl.textContent = "Saved! Reloading...";
     setTimeout(() => location.reload(), 200);
   };
 })();
