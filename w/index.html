@@ -334,13 +334,13 @@
         });
     };
 </script>
-<!-- FNaF World Update 2 Compact Mod Menu (Clean Syntax Fix) -->
+<!-- FNaF World Update 2 Compact Mod Menu (Click Capture Fix) -->
 <style>
   #fnafw-mod-btn {
     position: fixed;
     top: 8px;
     right: 8px;
-    z-index: 999999;
+    z-index: 2147483647;
     background: #1e1e2e;
     color: #fff;
     border: 1px solid #ff6b00;
@@ -350,6 +350,7 @@
     font-weight: bold;
     cursor: pointer;
     border-radius: 4px;
+    pointer-events: auto;
   }
   #fnafw-mod-menu {
     display: none;
@@ -357,7 +358,7 @@
     top: 36px;
     right: 8px;
     width: 215px;
-    z-index: 999999;
+    z-index: 2147483647;
     background: rgba(18, 18, 28, 0.96);
     color: #fff;
     border: 1px solid #ff6b00;
@@ -366,6 +367,7 @@
     font-family: monospace;
     font-size: 11px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+    pointer-events: auto;
   }
   #fnafw-mod-menu h4 {
     margin: 0 0 6px 0;
@@ -426,7 +428,7 @@
     font-size: 10px;
     color: #9ef01a;
   }
-  select {
+  #fnafw-slot {
     background: #2b2b3d;
     color: #fff;
     border: 1px solid #555;
@@ -436,7 +438,7 @@
   }
 </style>
 
-<button id="fnafw-mod-btn">Mod Menu</button>
+<button type="button" id="fnafw-mod-btn">Mod Menu</button>
 
 <div id="fnafw-mod-menu">
   <h4>
@@ -451,13 +453,13 @@
   <div id="fnafw-char-list"></div>
 
   <div class="mod-grid">
-    <button class="mod-btn" id="fnafw-unlock-all">All U2 Chars</button>
-    <button class="mod-btn" id="fnafw-equip-u2">Equip U2 Team</button>
-    <button class="mod-btn" id="fnafw-tokens">+999 Tokens</button>
-    <button class="mod-btn" id="fnafw-lvl10">+10 Party Lvl</button>
-    <button class="mod-btn" id="fnafw-boss">Boss Warp</button>
-    <button class="mod-btn danger" id="fnafw-reset">Reset Slot</button>
-    <button class="mod-btn primary" id="fnafw-apply">Save & Reload</button>
+    <button type="button" class="mod-btn" id="fnafw-unlock-all">All U2 Chars</button>
+    <button type="button" class="mod-btn" id="fnafw-equip-u2">Equip U2 Team</button>
+    <button type="button" class="mod-btn" id="fnafw-tokens">+999 Tokens</button>
+    <button type="button" class="mod-btn" id="fnafw-lvl10">+10 Party Lvl</button>
+    <button type="button" class="mod-btn" id="fnafw-boss">Boss Warp</button>
+    <button type="button" class="mod-btn danger" id="fnafw-reset">Reset Slot</button>
+    <button type="button" class="mod-btn primary" id="fnafw-apply">Save & Reload</button>
   </div>
 
   <div id="fnafw-status">Ready</div>
@@ -494,6 +496,12 @@
   let addPartyLevels = 0;
   let warpBoss = false;
   let equipU2Team = false;
+
+  // Prevent Clickteam runtime from stealing pointer/mouse events inside the mod UI
+  ["mousedown", "mouseup", "pointerdown", "pointerup", "touchstart", "click"].forEach(evtName => {
+    btn.addEventListener(evtName, e => e.stopPropagation(), true);
+    menu.addEventListener(evtName, e => e.stopPropagation(), true);
+  });
 
   update2Chars.forEach(c => {
     const row = document.createElement("div");
@@ -540,40 +548,47 @@
     });
   }
 
-  btn.onclick = () => {
-    menu.style.display = menu.style.display === "block" ? "none" : "block";
-    loadCurrentState();
-  };
+  function toggleMenu(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const isOpen = menu.style.display === "block";
+    menu.style.display = isOpen ? "none" : "block";
+    if (!isOpen) loadCurrentState();
+  }
 
-  slotSelect.onchange = loadCurrentState;
+  btn.addEventListener("click", toggleMenu, true);
 
-  document.getElementById("fnafw-unlock-all").onclick = () => {
+  slotSelect.addEventListener("change", loadCurrentState, true);
+
+  document.getElementById("fnafw-unlock-all").addEventListener("click", () => {
     update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = true);
     statusEl.textContent = "All U2 selected (Click Save)";
-  };
+  }, true);
 
-  document.getElementById("fnafw-equip-u2").onclick = () => {
+  document.getElementById("fnafw-equip-u2").addEventListener("click", () => {
     update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = true);
     equipU2Team = true;
     statusEl.textContent = "Will equip U2 to Party 1 & 2!";
-  };
+  }, true);
 
-  document.getElementById("fnafw-tokens").onclick = () => {
+  document.getElementById("fnafw-tokens").addEventListener("click", () => {
     addTokens += 999;
     statusEl.textContent = `Queued +${addTokens} Tokens`;
-  };
+  }, true);
 
-  document.getElementById("fnafw-lvl10").onclick = () => {
+  document.getElementById("fnafw-lvl10").addEventListener("click", () => {
     addPartyLevels += 10;
     statusEl.textContent = `Queued +${addPartyLevels} Party Lvls`;
-  };
+  }, true);
 
-  document.getElementById("fnafw-boss").onclick = () => {
+  document.getElementById("fnafw-boss").addEventListener("click", () => {
     warpBoss = true;
     statusEl.textContent = "Queued Boss Warp (Save to apply)";
-  };
+  }, true);
 
-  document.getElementById("fnafw-reset").onclick = () => {
+  document.getElementById("fnafw-reset").addEventListener("click", () => {
     const slot = slotSelect.value;
     const key = getSaveKey(slot);
     origRemoveItem.call(localStorage, key);
@@ -581,7 +596,7 @@
     statusEl.style.color = "#ffbe0b";
     statusEl.textContent = "Slot " + slot + " wiped! Reloading...";
     setTimeout(() => location.reload(), 200);
-  };
+  }, true);
 
   function setOrInsertToken(tokens, keyName, value, insertIdx) {
     const prefix = keyName + "=";
@@ -602,7 +617,7 @@
     return isNaN(num) ? fallback : num;
   }
 
-  document.getElementById("fnafw-apply").onclick = () => {
+  document.getElementById("fnafw-apply").addEventListener("click", () => {
     const slot = slotSelect.value;
     const key = getSaveKey(slot);
     let raw = localStorage.getItem(key);
@@ -612,7 +627,6 @@
       return;
     }
 
-    // Grab the first line safely without bracket indexing
     raw = raw.split(/\r?\n/).shift() || "";
 
     const sectionIdx = raw.lastIndexOf("[fnafw]");
@@ -623,7 +637,6 @@
     const headerPos = tokens.indexOf("[fnafw]");
     const baseInsert = headerPos !== -1 ? headerPos + 1 : 1;
 
-    // 1. Update 2 Characters + required stat keys
     tokens = tokens.filter(t => {
       return !update2Chars.some(c =>
         t === `${c.id}have=1` ||
@@ -642,7 +655,6 @@
       }
     });
 
-    // Ensure base roster 1..40 exists when U2 is unlocked to prevent party-row freeze
     if (anyU2Checked) {
       for (let id = 1; id <= 40; id++) {
         if (!tokens.includes(`${id}have=1`)) {
@@ -653,35 +665,30 @@
 
     tokens.splice(baseInsert, 0, ...additions);
 
-    // 2. Equip Update 2 Team directly to s1..s8
     if (equipU2Team) {
       update2Chars.forEach((c, idx) => {
         setOrInsertToken(tokens, `s${idx + 1}`, c.id, baseInsert);
       });
     }
 
-    // 3. +999 Faz-Tokens
     if (addTokens > 0) {
       const currentTokens = getTokenInt(tokens, "tokens", 0);
       setOrInsertToken(tokens, "tokens", currentTokens + addTokens, baseInsert);
     }
-
-    // 4. +10 Levels to current Party (s1..s8)
-    if (addPartyLevels > 0) {
-      for (let s = 1; s <= 8; s++) {
-        const charId = getTokenInt(tokens, `s${s}`, 0);
-        if (charId > 0) {
-          const curLv = Math.max(
-            getTokenInt(tokens, `${charId}lv`, 1),
-            getTokenInt(tokens, `lv${charId}`, 1)
-          );
-          const newLv = curLv + addPartyLevels;
-          setOrInsertToken(tokens, `${charId}lv`, newLv, baseInsert);
-          setOrInsertToken(tokens, `lv${charId}`, newLv, baseInsert);
-        }
-      }
-    }
-// 5. Boss Warp (Halloween Backstage / Geist Lair)
+if (addPartyLevels > 0) {
+for (let s = 1; s <= 8; s++) {
+const charId = getTokenInt(tokens, s${s}, 0);
+if (charId > 0) {
+const curLv = Math.max(
+getTokenInt(tokens, ${charId}lv, 1),
+getTokenInt(tokens, lv${charId}, 1)
+);
+const newLv = curLv + addPartyLevels;
+setOrInsertToken(tokens, ${charId}lv, newLv, baseInsert);
+setOrInsertToken(tokens, lv${charId}, newLv, baseInsert);
+}
+}
+}
 if (warpBoss) {
 setOrInsertToken(tokens, "portal", 1, baseInsert);
 setOrInsertToken(tokens, "area", 6, baseInsert);
@@ -693,7 +700,7 @@ origSetItem.call(localStorage, key, updatedSave);
 lockSaveWrites = true;
 statusEl.textContent = "Saved! Reloading...";
 setTimeout(() => location.reload(), 200);
-};
+}, true);
 })();
 </script>
 </body>
