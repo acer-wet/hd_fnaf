@@ -334,7 +334,7 @@
         });
     };
 </script>
-<!-- FNaF World Update 2 Compact Mod Menu -->
+<!-- FNaF World Update 2 Compact Mod Menu (All Bugs Fixed + Working Reset) -->
 <style>
   #fnafw-mod-btn {
     position: fixed;
@@ -404,6 +404,13 @@
   .mod-btn:hover {
     background: #3d3d56;
   }
+  .mod-btn.danger {
+    background: #7a1c1c;
+    border-color: #a82828;
+  }
+  .mod-btn.danger:hover {
+    background: #962222;
+  }
   .mod-btn.primary {
     background: #ff6b00;
     border-color: #ff6b00;
@@ -448,7 +455,8 @@
     <button class="mod-btn" id="fnafw-equip-u2">Equip U2 Team</button>
     <button class="mod-btn" id="fnafw-tokens">+999 Tokens</button>
     <button class="mod-btn" id="fnafw-lvl10">+10 Party Lvl</button>
-    <button class="mod-btn" id="fnafw-boss" style="grid-column: span 2;">Boss Warp (Geist Lair)</button>
+    <button class="mod-btn" id="fnafw-boss">Boss Warp</button>
+    <button class="mod-btn danger" id="fnafw-reset">Reset Slot</button>
     <button class="mod-btn primary" id="fnafw-apply">Save & Reload</button>
   </div>
 
@@ -470,6 +478,7 @@
 
   let lockSaveWrites = false;
   const origSetItem = Storage.prototype.setItem;
+  const origRemoveItem = Storage.prototype.removeItem;
   Storage.prototype.setItem = function(k, v) {
     if (lockSaveWrites && k && k.toLowerCase().includes("fnafw")) return;
     return origSetItem.apply(this, arguments);
@@ -481,7 +490,6 @@
   const slotSelect = document.getElementById("fnafw-slot");
   const statusEl = document.getElementById("fnafw-status");
 
-  // Pending quick-action flags
   let addTokens = 0;
   let addPartyLevels = 0;
   let warpBoss = false;
@@ -565,6 +573,17 @@
     statusEl.textContent = "Queued Boss Warp (Save to apply)";
   };
 
+  // Working Reset Slot Button
+  document.getElementById("fnafw-reset").onclick = () => {
+    const slot = slotSelect.value;
+    const key = getSaveKey(slot);
+    origRemoveItem.call(localStorage, key);
+    lockSaveWrites = true;
+    statusEl.style.color = "#ffbe0b";
+    statusEl.textContent = "Slot " + slot + " wiped! Reloading...";
+    setTimeout(() => location.reload(), 200);
+  };
+
   function setOrInsertToken(tokens, keyName, value, insertIdx) {
     const prefix = keyName + "=";
     const existingIdx = tokens.findIndex(t => t.startsWith(prefix));
@@ -579,7 +598,8 @@
     const prefix = keyName + "=";
     const found = tokens.find(t => t.startsWith(prefix));
     if (!found) return fallback;
-    const num = parseInt(found.split("=")[1], 10);
+    const valStr = found.slice(prefix.length);
+    const num = parseInt(valStr, 10);
     return isNaN(num) ? fallback : num;
   }
 
@@ -593,7 +613,9 @@
       return;
     }
 
-    raw = raw.split(/\r?\n/);
+    // Properly grab the first line string
+    raw = raw.split(/\r?\n/)[0];
+
     const sectionIdx = raw.lastIndexOf("[fnafw]");
     const beforeSection = sectionIdx !== -1 ? raw.slice(0, sectionIdx) : "";
     const activeSection = sectionIdx !== -1 ? raw.slice(sectionIdx) : raw;
@@ -602,23 +624,37 @@
     const headerPos = tokens.indexOf("[fnafw]");
     const baseInsert = headerPos !== -1 ? headerPos + 1 : 1;
 
-    // 1. Update 2 Characters (ONLY write have=1 without malformed lv/xp keys to prevent party freeze)
+    // 1. Update 2 Characters + required stat keys (lv, next, xp) so party swap doesn't hang
     tokens = tokens.filter(t => {
       return !update2Chars.some(c =>
         t === `${c.id}have=1` ||
-        t === `${c.id}have=0`
+        t === `${c.id}have=0` ||
+        t.startsWith(`${c.id}next=`)
       );
     });
 
     const additions = [];
+    let anyU2Checked = false;
     update2Chars.forEach(c => {
       if (document.getElementById(`char-${c.id}`).checked) {
+        anyU2Checked = true;
         additions.push(`${c.id}have=1`);
+        additions.push(`${c.id}next=1550`);
       }
     });
+
+    // Also ensure characters 1..40 exist in the save if U2 is unlocked so row-rendering loop doesn't hang
+    if (anyU2Checked) {
+      for (let id = 1; id <= 40; id++) {
+        if (!tokens.includes(`${id}have=1`)) {
+          additions.push(`${id}have=1`);
+        }
+      }
+    }
+
     tokens.splice(baseInsert, 0, ...additions);
 
-    // 2. Equip Update 2 Team directly to s1..s8 (bypasses party-swap freeze completely)
+    // 2. Equip Update 2 Team directly to s1..s8
     if (equipU2Team) {
       update2Chars.forEach((c, idx) => {
         setOrInsertToken(tokens, `s${idx + 1}`, c.id, baseInsert);
@@ -642,29 +678,25 @@
           );
           const newLv = curLv + addPartyLevels;
           setOrInsertToken(tokens, `${charId}lv`, newLv, baseInsert);
-          setOrInsertToken(tokens, `lv${charId}`, newLv, baseInsert);
-        }
-      }
-    }
-
-    // 5. Boss Warp (Halloween Backstage / Geist Lair)
-    if (warpBoss) {
-      setOrInsertToken(tokens, "portal", 1, baseInsert);
-      setOrInsertToken(tokens, "area", 6, baseInsert);
-      setOrInsertToken(tokens, "x", 1500, baseInsert);
-      setOrInsertToken(tokens, "y", 1100, baseInsert);
-    }
-
-    const updatedSave = beforeSection + tokens.join("{@24}");
-    origSetItem.call(localStorage, key, updatedSave);
-
-    lockSaveWrites = true;
-    statusEl.textContent = "Saved! Reloading...";
-    setTimeout(() => location.reload(), 200);
-  };
+setOrInsertToken(tokens, lv${charId}, newLv, baseInsert);
+}
+}
+}
+// 5. Boss Warp (Halloween Backstage / Geist Lair)
+if (warpBoss) {
+setOrInsertToken(tokens, "portal", 1, baseInsert);
+setOrInsertToken(tokens, "area", 6, baseInsert);
+setOrInsertToken(tokens, "x", 1500, baseInsert);
+setOrInsertToken(tokens, "y", 1100, baseInsert);
+}
+const updatedSave = beforeSection + tokens.join("{@24}");
+origSetItem.call(localStorage, key, updatedSave);
+lockSaveWrites = true;
+statusEl.textContent = "Saved! Reloading...";
+setTimeout(() => location.reload(), 200);
+};
 })();
 </script>
-
 </body>
 </html>
 
