@@ -334,105 +334,122 @@
         });
     };
 </script>
-<!-- FNaF World Update 2 Character Mod Menu (Clickteam {@24} Format Fix) -->
+<!-- FNaF World Update 2 Compact Mod Menu -->
 <style>
   #fnafw-mod-btn {
     position: fixed;
-    top: 12px;
-    right: 12px;
+    top: 8px;
+    right: 8px;
     z-index: 999999;
     background: #1e1e2e;
     color: #fff;
-    border: 2px solid #ff6b00;
-    padding: 8px 14px;
+    border: 1px solid #ff6b00;
+    padding: 5px 10px;
     font-family: monospace;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: 4px;
   }
   #fnafw-mod-menu {
     display: none;
     position: fixed;
-    top: 52px;
-    right: 12px;
-    width: 270px;
+    top: 36px;
+    right: 8px;
+    width: 215px;
     z-index: 999999;
-    background: rgba(20, 20, 30, 0.96);
+    background: rgba(18, 18, 28, 0.96);
     color: #fff;
-    border: 2px solid #ff6b00;
-    border-radius: 8px;
-    padding: 14px;
+    border: 1px solid #ff6b00;
+    border-radius: 6px;
+    padding: 9px;
     font-family: monospace;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.7);
+    font-size: 11px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
   }
-  #fnafw-mod-menu h3 {
-    margin: 0 0 10px 0;
-    font-size: 15px;
+  #fnafw-mod-menu h4 {
+    margin: 0 0 6px 0;
+    font-size: 12px;
     color: #ff9d42;
-    border-bottom: 1px solid #444;
-    padding-bottom: 6px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   .mod-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 6px 0;
-    font-size: 13px;
+    margin: 3px 0;
   }
-  .mod-actions {
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  .mod-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 7px;
   }
-  .mod-actions button {
-    background: #ff6b00;
+  .mod-btn {
+    background: #2e2e42;
     color: #fff;
-    border: none;
-    padding: 7px;
+    border: 1px solid #555;
+    padding: 4px 5px;
     font-family: monospace;
+    font-size: 10px;
     font-weight: bold;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 3px;
+    text-align: center;
   }
-  .mod-actions button:hover {
+  .mod-btn:hover {
+    background: #3d3d56;
+  }
+  .mod-btn.primary {
+    background: #ff6b00;
+    border-color: #ff6b00;
+    grid-column: span 2;
+    font-size: 11px;
+    padding: 5px;
+  }
+  .mod-btn.primary:hover {
     background: #e05e00;
   }
   #fnafw-status {
-    margin-top: 8px;
-    font-size: 11px;
+    margin-top: 5px;
+    font-size: 10px;
     color: #9ef01a;
-    word-break: break-all;
   }
   select {
     background: #2b2b3d;
     color: #fff;
     border: 1px solid #555;
-    padding: 3px;
+    font-size: 10px;
+    padding: 1px 3px;
     font-family: monospace;
   }
 </style>
 
-<button id="fnafw-mod-btn">Update 2 Mod Menu</button>
+<button id="fnafw-mod-btn">Mod Menu</button>
 
 <div id="fnafw-mod-menu">
-  <h3>Update 2 Characters</h3>
-  
-  <div class="mod-row">
-    <label for="fnafw-slot">Save Slot:</label>
+  <h4>
+    <span>Update 2 Mod</span>
     <select id="fnafw-slot">
       <option value="1">Slot 1</option>
       <option value="2">Slot 2</option>
       <option value="3">Slot 3</option>
     </select>
-  </div>
+  </h4>
 
   <div id="fnafw-char-list"></div>
 
-  <div class="mod-actions">
-    <button id="fnafw-unlock-all">Select All Update 2</button>
-    <button id="fnafw-apply">Save & Reload Game</button>
+  <div class="mod-grid">
+    <button class="mod-btn" id="fnafw-unlock-all">All U2 Chars</button>
+    <button class="mod-btn" id="fnafw-equip-u2">Equip U2 Team</button>
+    <button class="mod-btn" id="fnafw-tokens">+999 Tokens</button>
+    <button class="mod-btn" id="fnafw-lvl10">+10 Party Lvl</button>
+    <button class="mod-btn" id="fnafw-boss" style="grid-column: span 2;">Boss Warp (Geist Lair)</button>
+    <button class="mod-btn primary" id="fnafw-apply">Save & Reload</button>
   </div>
 
   <div id="fnafw-status">Ready</div>
@@ -451,7 +468,6 @@
     { id: 48, name: "Purple Guy" }
   ];
 
-  // Prevent Clickteam from overwriting our modded save when the page reloads
   let lockSaveWrites = false;
   const origSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function(k, v) {
@@ -464,6 +480,12 @@
   const list = document.getElementById("fnafw-char-list");
   const slotSelect = document.getElementById("fnafw-slot");
   const statusEl = document.getElementById("fnafw-status");
+
+  // Pending quick-action flags
+  let addTokens = 0;
+  let addPartyLevels = 0;
+  let warpBoss = false;
+  let equipU2Team = false;
 
   update2Chars.forEach(c => {
     const row = document.createElement("div");
@@ -485,19 +507,22 @@
   }
 
   function loadCurrentState() {
+    addTokens = 0;
+    addPartyLevels = 0;
+    warpBoss = false;
+    equipU2Team = false;
+
     const key = getSaveKey(slotSelect.value);
     const raw = localStorage.getItem(key);
     if (!raw) {
       statusEl.style.color = "#ffbe0b";
-      statusEl.textContent = "No save in " + key + " yet.";
+      statusEl.textContent = "No save in " + key;
       update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = false);
       return;
     }
-
     statusEl.style.color = "#9ef01a";
-    statusEl.textContent = "Loaded: " + key;
+    statusEl.textContent = "Loaded " + key;
 
-    // Look inside the [fnafw] section using Clickteam's {@24} delimiter
     const sectionIdx = raw.lastIndexOf("[fnafw]");
     const activeSection = sectionIdx !== -1 ? raw.slice(sectionIdx) : raw;
     const tokens = activeSection.split("{@24}");
@@ -515,10 +540,48 @@
   slotSelect.onchange = loadCurrentState;
 
   document.getElementById("fnafw-unlock-all").onclick = () => {
-    update2Chars.forEach(c => {
-      document.getElementById(`char-${c.id}`).checked = true;
-    });
+    update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = true);
+    statusEl.textContent = "All U2 selected (Click Save)";
   };
+
+  document.getElementById("fnafw-equip-u2").onclick = () => {
+    update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = true);
+    equipU2Team = true;
+    statusEl.textContent = "Will equip U2 to Party 1 & 2!";
+  };
+
+  document.getElementById("fnafw-tokens").onclick = () => {
+    addTokens += 999;
+    statusEl.textContent = `Queued +${addTokens} Tokens`;
+  };
+
+  document.getElementById("fnafw-lvl10").onclick = () => {
+    addPartyLevels += 10;
+    statusEl.textContent = `Queued +${addPartyLevels} Party Lvls`;
+  };
+
+  document.getElementById("fnafw-boss").onclick = () => {
+    warpBoss = true;
+    statusEl.textContent = "Queued Boss Warp (Save to apply)";
+  };
+
+  function setOrInsertToken(tokens, keyName, value, insertIdx) {
+    const prefix = keyName + "=";
+    const existingIdx = tokens.findIndex(t => t.startsWith(prefix));
+    if (existingIdx !== -1) {
+      tokens[existingIdx] = `${keyName}=${value}`;
+    } else {
+      tokens.splice(insertIdx, 0, `${keyName}=${value}`);
+    }
+  }
+
+  function getTokenInt(tokens, keyName, fallback = 0) {
+    const prefix = keyName + "=";
+    const found = tokens.find(t => t.startsWith(prefix));
+    if (!found) return fallback;
+    const num = parseInt(found.split("=")[1], 10);
+    return isNaN(num) ? fallback : num;
+  }
 
   document.getElementById("fnafw-apply").onclick = () => {
     const slot = slotSelect.value;
@@ -530,49 +593,73 @@
       return;
     }
 
-    // Clean up any stray newline-appended lines from earlier attempts
-    raw = raw.split(/\r?\n/)[0];
-
-    // Find the active [fnafw] section (at the end of the string)
+    raw = raw.split(/\r?\n/);
     const sectionIdx = raw.lastIndexOf("[fnafw]");
     const beforeSection = sectionIdx !== -1 ? raw.slice(0, sectionIdx) : "";
     const activeSection = sectionIdx !== -1 ? raw.slice(sectionIdx) : raw;
 
     let tokens = activeSection.split("{@24}");
+    const headerPos = tokens.indexOf("[fnafw]");
+    const baseInsert = headerPos !== -1 ? headerPos + 1 : 1;
 
-    // Remove existing 41..48 entries so we don't duplicate them
+    // 1. Update 2 Characters (ONLY write have=1 without malformed lv/xp keys to prevent party freeze)
     tokens = tokens.filter(t => {
       return !update2Chars.some(c =>
         t === `${c.id}have=1` ||
-        t === `${c.id}have=0` ||
-        t.startsWith(`${c.id}lv=`) ||
-        t.startsWith(`${c.id}xp=`)
+        t === `${c.id}have=0`
       );
     });
 
-    // Build additions for checked Update 2 characters
     const additions = [];
     update2Chars.forEach(c => {
       if (document.getElementById(`char-${c.id}`).checked) {
         additions.push(`${c.id}have=1`);
-        additions.push(`${c.id}lv=1`);
-        additions.push(`${c.id}xp=0`);
       }
     });
+    tokens.splice(baseInsert, 0, ...additions);
 
-    // Insert right after [fnafw] if present, otherwise after the first token
-    const headerPos = tokens.indexOf("[fnafw]");
-    if (headerPos !== -1) {
-      tokens.splice(headerPos + 1, 0, ...additions);
-    } else {
-      tokens.splice(1, 0, ...additions);
+    // 2. Equip Update 2 Team directly to s1..s8 (bypasses party-swap freeze completely)
+    if (equipU2Team) {
+      update2Chars.forEach((c, idx) => {
+        setOrInsertToken(tokens, `s${idx + 1}`, c.id, baseInsert);
+      });
+    }
+
+    // 3. +999 Faz-Tokens
+    if (addTokens > 0) {
+      const currentTokens = getTokenInt(tokens, "tokens", 0);
+      setOrInsertToken(tokens, "tokens", currentTokens + addTokens, baseInsert);
+    }
+
+    // 4. +10 Levels to current Party (s1..s8)
+    if (addPartyLevels > 0) {
+      for (let s = 1; s <= 8; s++) {
+        const charId = getTokenInt(tokens, `s${s}`, 0);
+        if (charId > 0) {
+          const curLv = Math.max(
+            getTokenInt(tokens, `${charId}lv`, 1),
+            getTokenInt(tokens, `lv${charId}`, 1)
+          );
+          const newLv = curLv + addPartyLevels;
+          setOrInsertToken(tokens, `${charId}lv`, newLv, baseInsert);
+          setOrInsertToken(tokens, `lv${charId}`, newLv, baseInsert);
+        }
+      }
+    }
+
+    // 5. Boss Warp (Halloween Backstage / Geist Lair)
+    if (warpBoss) {
+      setOrInsertToken(tokens, "portal", 1, baseInsert);
+      setOrInsertToken(tokens, "area", 6, baseInsert);
+      setOrInsertToken(tokens, "x", 1500, baseInsert);
+      setOrInsertToken(tokens, "y", 1100, baseInsert);
     }
 
     const updatedSave = beforeSection + tokens.join("{@24}");
     origSetItem.call(localStorage, key, updatedSave);
 
     lockSaveWrites = true;
-    statusEl.textContent = "Saved with {@24} format! Reloading...";
+    statusEl.textContent = "Saved! Reloading...";
     setTimeout(() => location.reload(), 200);
   };
 })();
