@@ -334,7 +334,7 @@
         });
     };
 </script>
-<!-- FNaF World Update 2 Character Mod Menu + Save Inspector -->
+<!-- FNaF World Update 2 Character Mod Menu (Clickteam {@24} Format Fix) -->
 <style>
   #fnafw-mod-btn {
     position: fixed;
@@ -356,7 +356,7 @@
     position: fixed;
     top: 52px;
     right: 12px;
-    width: 280px;
+    width: 270px;
     z-index: 999999;
     background: rgba(20, 20, 30, 0.96);
     color: #fff;
@@ -396,20 +396,8 @@
     cursor: pointer;
     border-radius: 4px;
   }
-  .mod-actions button.secondary {
-    background: #3a3a52;
-  }
-  #fnafw-debug-box {
-    display: none;
-    width: 100%;
-    height: 110px;
-    margin-top: 8px;
-    background: #111;
-    color: #0f0;
-    border: 1px solid #555;
-    font-family: monospace;
-    font-size: 11px;
-    box-sizing: border-box;
+  .mod-actions button:hover {
+    background: #e05e00;
   }
   #fnafw-status {
     margin-top: 8px;
@@ -445,10 +433,8 @@
   <div class="mod-actions">
     <button id="fnafw-unlock-all">Select All Update 2</button>
     <button id="fnafw-apply">Save & Reload Game</button>
-    <button id="fnafw-inspect" class="secondary">Show Raw Save Data</button>
   </div>
 
-  <textarea id="fnafw-debug-box" readonly></textarea>
   <div id="fnafw-status">Ready</div>
 </div>
 
@@ -465,6 +451,7 @@
     { id: 48, name: "Purple Guy" }
   ];
 
+  // Prevent Clickteam from overwriting our modded save when the page reloads
   let lockSaveWrites = false;
   const origSetItem = Storage.prototype.setItem;
   Storage.prototype.setItem = function(k, v) {
@@ -477,7 +464,6 @@
   const list = document.getElementById("fnafw-char-list");
   const slotSelect = document.getElementById("fnafw-slot");
   const statusEl = document.getElementById("fnafw-status");
-  const debugBox = document.getElementById("fnafw-debug-box");
 
   update2Chars.forEach(c => {
     const row = document.createElement("div");
@@ -503,16 +489,21 @@
     const raw = localStorage.getItem(key);
     if (!raw) {
       statusEl.style.color = "#ffbe0b";
-      statusEl.textContent = "No save in " + key;
+      statusEl.textContent = "No save in " + key + " yet.";
+      update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = false);
       return;
     }
+
     statusEl.style.color = "#9ef01a";
     statusEl.textContent = "Loaded: " + key;
-    debugBox.value = raw;
+
+    // Look inside the [fnafw] section using Clickteam's {@24} delimiter
+    const sectionIdx = raw.lastIndexOf("[fnafw]");
+    const activeSection = sectionIdx !== -1 ? raw.slice(sectionIdx) : raw;
+    const tokens = activeSection.split("{@24}");
 
     update2Chars.forEach(c => {
-      const regex = new RegExp(`^${c.id}have\\s*=\\s*1`, "m");
-      document.getElementById(`char-${c.id}`).checked = regex.test(raw);
+      document.getElementById(`char-${c.id}`).checked = tokens.includes(`${c.id}have=1`);
     });
   }
 
@@ -522,11 +513,6 @@
   };
 
   slotSelect.onchange = loadCurrentState;
-
-  document.getElementById("fnafw-inspect").onclick = () => {
-    debugBox.style.display = debugBox.style.display === "block" ? "none" : "block";
-    loadCurrentState();
-  };
 
   document.getElementById("fnafw-unlock-all").onclick = () => {
     update2Chars.forEach(c => {
@@ -544,41 +530,54 @@
       return;
     }
 
-    const eol = raw.includes("\r\n") ? "\r\n" : "\n";
-    let lines = raw.split(/\r?\n/);
+    // Clean up any stray newline-appended lines from earlier attempts
+    raw = raw.split(/\r?\n/)[0];
 
-    lines = lines.filter(line => {
-      const trimmed = line.trim();
+    // Find the active [fnafw] section (at the end of the string)
+    const sectionIdx = raw.lastIndexOf("[fnafw]");
+    const beforeSection = sectionIdx !== -1 ? raw.slice(0, sectionIdx) : "";
+    const activeSection = sectionIdx !== -1 ? raw.slice(sectionIdx) : raw;
+
+    let tokens = activeSection.split("{@24}");
+
+    // Remove existing 41..48 entries so we don't duplicate them
+    tokens = tokens.filter(t => {
       return !update2Chars.some(c =>
-        trimmed.startsWith(`${c.id}have=`) ||
-        trimmed.startsWith(`${c.id}lv=`) ||
-        trimmed.startsWith(`${c.id}exp=`)
+        t === `${c.id}have=1` ||
+        t === `${c.id}have=0` ||
+        t.startsWith(`${c.id}lv=`) ||
+        t.startsWith(`${c.id}xp=`)
       );
     });
 
+    // Build additions for checked Update 2 characters
     const additions = [];
     update2Chars.forEach(c => {
       if (document.getElementById(`char-${c.id}`).checked) {
         additions.push(`${c.id}have=1`);
         additions.push(`${c.id}lv=1`);
-        additions.push(`${c.id}exp=0`);
+        additions.push(`${c.id}xp=0`);
       }
     });
 
-    const headerIndex = lines.findIndex(l => l.trim().toLowerCase() === `[fnafw${slot}]`);
-    if (headerIndex !== -1) {
-      lines.splice(headerIndex + 1, 0, ...additions);
+    // Insert right after [fnafw] if present, otherwise after the first token
+    const headerPos = tokens.indexOf("[fnafw]");
+    if (headerPos !== -1) {
+      tokens.splice(headerPos + 1, 0, ...additions);
     } else {
-      lines.push(...additions);
+      tokens.splice(1, 0, ...additions);
     }
 
-    origSetItem.call(localStorage, key, lines.join(eol));
+    const updatedSave = beforeSection + tokens.join("{@24}");
+    origSetItem.call(localStorage, key, updatedSave);
+
     lockSaveWrites = true;
-    statusEl.textContent = "Saved! Reloading...";
+    statusEl.textContent = "Saved with {@24} format! Reloading...";
     setTimeout(() => location.reload(), 200);
   };
 })();
 </script>
+
 </body>
 </html>
 
