@@ -189,29 +189,34 @@
         }
         document.getElementById('mod-toggle').addEventListener('click', toggleModMenu);
 
-        function setModStatus(msg, err = false) {
-            modStatus.style.color = err ? '#ff5555' : '#00ff88';
-            modStatus.textContent = msg;
-        }
-
-        function getActiveSaveKey() {
+               function getActiveSaveKey() {
             const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
             if (!keys.length) return null;
+            // Prefer fnafw1 if it has data, otherwise pick the longest save file
+            const slot1 = keys.find(k => /fnafw1/i.test(k) && (localStorage.getItem(k) || '').length > 10);
+            if (slot1) return slot1;
             return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length)[0];
         }
 
         function editIniValue(ini, keyName, val, add = true) {
-            const rx = new RegExp(`^(${keyName}=)(-?\\d+)`, 'mi');
-            return rx.test(ini)
-                ? ini.replace(rx, (_, p, n) => p + (add ? parseInt(n, 10) + val : val))
-                : ini + `\n${keyName}=${val}`;
+            const rx = new RegExp(`^(${keyName}\\s*=\\s*)(-?\\d+)`, 'mi');
+            if (rx.test(ini)) {
+                return ini.replace(rx, (_, p, n) => p + (add ? parseInt(n, 10) + val : val));
+            }
+            // Insert under [fnafw] header if present, otherwise append
+            if (/^\[fnafw\]/mi.test(ini)) {
+                return ini.replace(/^(\[fnafw\]\s*)/mi, `$1\n${keyName}=${val}\n`);
+            }
+            return ini.trim() + `\n${keyName}=${val}\n`;
         }
 
         function modAddTokens(amount) {
             const key = getActiveSaveKey();
             if (!key) return setModStatus('No save found! Walk in world first.', true);
-            localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'tokens', amount, true));
-            setModStatus(`+${amount} Faz Tokens added! Reload save in-game.`);
+            let ini = localStorage.getItem(key);
+            ini = editIniValue(ini, 'tokens', amount, true);
+            localStorage.setItem(key, ini);
+            setModStatus(`+${amount} Faz Tokens added to ${key}! Reload save.`);
         }
 
         function modLevelUpParty(levels) {
@@ -219,23 +224,39 @@
             if (!key) return setModStatus('No save found! Walk in world first.', true);
             let ini = localStorage.getItem(key);
             let count = 0;
+
             for (let slot = 1; slot <= 4; slot++) {
-                const m = ini.match(new RegExp(`^s${slot}=(\\d+)`, 'mi'));
+                // FNaF World INI uses s1=id..s4=id (or 1s=id..4s=id in some builds)
+                const m = ini.match(new RegExp(`^(?:s${slot}|${slot}s)\\s*=\\s*(\\d+)`, 'mi'));
                 if (m && parseInt(m[1], 10) > 0) {
-                    ini = editIniValue(ini, `${m[1]}LV`, levels, true);
+                    const charId = parseInt(m[1], 10);
+                    ini = editIniValue(ini, `${charId}LV`, levels, true);
                     count++;
                 }
             }
-            if (!count) return setModStatus('No active party found!', true);
+
+            // Fallback: if party slot keys aren't written yet, level up all unlocked characters
+            if (!count) {
+                for (let id = 1; id <= 48; id++) {
+                    if (new RegExp(`^${id}have\\s*=\\s*1`, 'mi').test(ini)) {
+                        ini = editIniValue(ini, `${id}LV`, levels, true);
+                        count++;
+                    }
+                }
+            }
+
+            if (!count) return setModStatus('No characters found! Win 1 battle first.', true);
             localStorage.setItem(key, ini);
-            setModStatus(`+${levels} Lvls added to active party! Reload save.`);
+            setModStatus(`+${levels} Lvls added (${count} chars)! Reload save.`);
         }
 
         function modUnlockAllChars() {
             const key = getActiveSaveKey();
             if (!key) return setModStatus('No save found! Walk in world first.', true);
             let ini = localStorage.getItem(key);
-            for (let id = 1; id <= 48; id++) ini = editIniValue(ini, `${id}have`, 1, false);
+            for (let id = 1; id <= 48; id++) {
+                ini = editIniValue(ini, `${id}have`, 1, false);
+            }
             localStorage.setItem(key, ini);
             setModStatus('All 48 characters unlocked! Reload save.');
         }
@@ -243,7 +264,9 @@
         function modMaxArmor() {
             const key = getActiveSaveKey();
             if (!key) return setModStatus('No save found! Walk in world first.', true);
-            localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'armor', 5, false));
+            let ini = localStorage.getItem(key);
+            ini = editIniValue(ini, 'armor', 5, false);
+            localStorage.setItem(key, ini);
             setModStatus('Max Endo Upgrade equipped! Reload save.');
         }
 
@@ -251,12 +274,13 @@
             const key = getActiveSaveKey();
             if (!key) return setModStatus('No save found! Walk in world first.', true);
             let ini = localStorage.getItem(key);
-            const isHard = /^hard=1/mi.test(ini);
+            const isHard = /^hard\s*=\s*1/mi.test(ini);
             const nextVal = isHard ? 0 : 1;
             ini = editIniValue(ini, 'hard', nextVal, false);
             localStorage.setItem(key, ini);
             setModStatus(`Switched to ${nextVal ? 'Hard Mode' : 'Normal Mode'}! Reload save.`);
         }
+
 
         // --- FAST LOADER & INDEXEDDB CACHE ---
         function openAssetDB() {
