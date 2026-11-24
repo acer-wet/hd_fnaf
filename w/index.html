@@ -9,22 +9,128 @@
     <style>
 
     </style>
-  
+  html {
+            display: block;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        body {
+            position: relative;
+            background-color: black;
+            background-image: url(resources/office.png);
+            background-position: center;
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            height: 100%;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .selection {
+            height: auto;
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .launcher-text {
+            position: absolute;
+            left: 50%;
+            transform: translate(-50%, 0);
+            bottom: 2.5vh;
+            z-index: 1;
+        }
+
+        .vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+        }
+
+        .glitch {
+            position: absolute;
+            background-image: url(resources/background.gif);
+            background-position: center;
+            background-size: 50vw;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            opacity: 0.75;
+            z-index: -1;
+        }
+
+        canvas {
+            display: none;
+            user-select: none;
+        }
+
+        #title {
+            position: absolute;
+            top: 10vh;
+            left: 5vw;
+            z-index: 1;
+            height: 20vh;
+        }
+
+        #animatronic {
+            position: absolute;
+            top: -5vh;
+            right: 7vw;
+            height: 120vh;
+        }
+
+        .loader {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            left: 50%;
+            transform: translate(-50%, 0);
+            bottom: 12vh;
+            z-index: 1;
+            color: white;
+            font-family: monospace;
+            text-align: center;
+            font-weight: lighter;
+            width: 85vw;
+        }
+
+        .loader h1 {
+            margin: 0;
+            font-size: 5vw;
+        }
+
+        .loader hr{
+            margin: 0;
+            border: white solid 0.1vw;
+            width: 0%;
+        }
+
+        .loader h2 {
+            margin: 1vh 0;
+            font-size: 1.4vw;
+        }
 
 </head>
 
 <body>
     <canvas id="MMFCanvas" width="800" height="600"> Your browser does not support Canvas, Please try again.</canvas>
-    <button id="mod-toggle">[M] MODS</button>
-<div id="mod-menu">
-    <h3>FNaF World Mods [M]</h3>
-    <button class="mod-btn" onclick="modAddTokens(100)">+100 Faz Tokens</button>
-    <button class="mod-btn" onclick="modLevelUpParty(5)">+5 Lvls (Active Party)</button>
-    <button class="mod-btn" onclick="modUnlockAllChars()">Unlock All Characters</button>
-    <button class="mod-btn" onclick="modMaxArmor()">Max Endo Upgrade</button>
-    <div id="mod-status">Walk in world first, click a mod, then reload save.</div>
-</div>
-
+   
     <div class="selection" id="selection">
         <img id="title" src="resources/title.png">
         <img id="animatronic" src="resources/animatronic.png">
@@ -32,22 +138,7 @@
     };
 
 </script>
-    const modMenu = document.getElementById('mod-menu');
-const modStatus = document.getElementById('mod-status');
-
-function toggleModMenu() {
-    modMenu.style.display = modMenu.style.display === 'block' ? 'none' : 'block';
-}
-document.getElementById('mod-toggle').addEventListener('click', toggleModMenu);
-document.addEventListener('keydown', e => {
-    if (e.key === 'm' || e.key === 'M') toggleModMenu();
-});
-
-function setModStatus(msg, err = false) {
-    modStatus.style.color = err ? '#ff5555' : '#00ff88';
-    modStatus.textContent = msg;
-}
-
+  
 function getActiveSaveKey() {
     const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
     if (!keys.length) return null;
@@ -61,46 +152,6 @@ function editIniValue(ini, keyName, val, add = true) {
         : ini + `\n${keyName}=${val}`;
 }
 
-function modAddTokens(amount) {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'tokens', amount, true));
-    setModStatus(`+${amount} Faz Tokens added! Reload save in-game.`);
-}
-
-function modLevelUpParty(levels) {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    let ini = localStorage.getItem(key);
-    let count = 0;
-    for (let slot = 1; slot <= 4; slot++) {
-        const m = ini.match(new RegExp(`^s${slot}=(\\d+)`, 'mi'));
-        if (m && parseInt(m[1], 10) > 0) {
-            ini = editIniValue(ini, `${m[1]}LV`, levels, true);
-            count++;
-        }
-    }
-    if (!count) return setModStatus('No active party found!', true);
-    localStorage.setItem(key, ini);
-    setModStatus(`+${levels} Lvls added to active party! Reload save.`);
-}
-
-function modUnlockAllChars() {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    let ini = localStorage.getItem(key);
-    for (let id = 1; id <= 48; id++) ini = editIniValue(ini, `${id}have`, 1, false);
-    localStorage.setItem(key, ini);
-    setModStatus('All 48 characters unlocked! Reload save.');
-}
-
-function modMaxArmor() {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'armor', 5, false));
-    setModStatus('Max Endo Upgrade equipped! Reload save.');
-}
-
 
 </script>
 
@@ -108,17 +159,7 @@ function modMaxArmor() {
 <body>
     <canvas id="MMFCanvas" width="800" height="600">Your browser does not support Canvas, Please try again.</canvas>
 
-    <button id="mod-toggle">[M] MODS</button>
-    <div id="mod-menu">
-        <h3>FNaF World Mods [M]</h3>
-        <button class="mod-btn" onclick="modAddTokens(100)">+100 Faz Tokens</button>
-        <button class="mod-btn" onclick="modLevelUpParty(5)">+5 Lvls (Active Party)</button>
-        <button class="mod-btn" onclick="modUnlockAllChars()">Unlock All Characters</button>
-        <button class="mod-btn" onclick="modMaxArmor()">Max Endo Upgrade</button>
-        <button class="mod-btn" onclick="modToggleHardMode()">Toggle Hard Mode</button>
-        <div id="mod-status">Walk in world first, click a mod, then reload save.</div>
-    </div>
-
+   
     <div class="selection" id="selection">
         <div class="loader">
             <h1 id="percentage">0%</h1>
@@ -141,11 +182,11 @@ function modMaxArmor() {
             event.stopPropagation();
         }
 
-        // Keyboard shortcuts (- and = for fullscreen, M for Mod Menu)
+        // Keyboard shortcuts (- and = for fullscreen,
         const pressedKeys = {};
         document.addEventListener('keydown', event => {
             pressedKeys[event.key] = true;
-            if (event.key === 'm' || event.key === 'M') toggleModMenu();
+           
             if (pressedKeys['-'] && pressedKeys['=']) {
                 document.querySelector('canvas').requestFullscreen();
                 delete pressedKeys[event.key];
@@ -155,74 +196,7 @@ function modMaxArmor() {
             delete pressedKeys[event.key];
         });
 
-        // --- MOD MENU ---
-        const modMenu = document.getElementById('mod-menu');
-                // Stop Clickteam Runtime from blocking clicks on the Mod Menu
-        ['mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup', 'touchstart'].forEach(evt => {
-                           const modToggle = document.getElementById('mod-toggle');
-        const modMenu = document.getElementById('mod-menu');
-        const modStatus = document.getElementById('mod-status');
-
-        function toggleModMenu(e) {
-            if (e) { e.preventDefault(); e.stopImmediatePropagation(); }
-            modMenu.style.display = modMenu.style.display === 'block' ? 'none' : 'block';
-        }
-
-        // Intercept pointer events in the capture phase BEFORE Clickteam Runtime can swallow them
-        ['pointerdown', 'mousedown', 'touchstart', 'click'].forEach(evt => {
-            modToggle.addEventListener(evt, e => {
-                e.stopImmediatePropagation();
-                if (evt === 'pointerdown' || evt === 'touchstart') toggleModMenu(e);
-            }, true);
-
-            modMenu.addEventListener(evt, e => {
-                e.stopImmediatePropagation();
-            }, true);
-        });
-
-        // Explicitly expose mod functions on window so inline onclick="" always finds them
-        window.modAddTokens = modAddTokens;
-        window.modLevelUpParty = modLevelUpParty;
-        window.modUnlockAllChars = modUnlockAllChars;
-        window.modMaxArmor = modMaxArmor;
-        window.modToggleHardMode = modToggleHardMode;
-
-
-        // --- FAST LOADER & INDEXEDDB CACHE ---
-        function openAssetDB() {
-            return new Promise((resolve, reject) => {
-                const req = indexedDB.open('fnafw-unpacked-v1', 1);
-                req.onupgradeneeded = () => req.result.createObjectStore('files');
-                req.onsuccess = () => resolve(req.result);
-                req.onerror = () => reject(req.error);
-            });
-        }
-
-        async function loadFromDB(db) {
-            return new Promise((resolve) => {
-                const tx = db.transaction('files', 'readonly');
-                const store = tx.objectStore('files');
-                const keysReq = store.getAllKeys();
-                const valsReq = store.getAll();
-                tx.oncomplete = () => {
-                    if (!keysReq.result.length) return resolve(null);
-                    const map = new Map();
-                    keysReq.result.forEach((k, i) => map.set(k, URL.createObjectURL(valsReq.result[i])));
-                    resolve(map);
-                };
-                tx.onerror = () => resolve(null);
-            });
-        }
-
-        async function saveToDB(db, entries) {
-            return new Promise((resolve) => {
-                const tx = db.transaction('files', 'readwrite');
-                const store = tx.objectStore('files');
-                for (const [name, blob] of entries) store.put(blob, name);
-                tx.oncomplete = resolve;
-                tx.onerror = resolve;
-            });
-        }
+       
 
         window.onload = async function () {
             const pctEl = document.getElementById('percentage');
