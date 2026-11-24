@@ -43,145 +43,162 @@
             overflow: hidden;
         }
 
-        .launcher-text {
-            position: absolute;
-            left: 50%;
-            transform: translate(-50%, 0);
-            bottom: 2.5vh;
-            z-index: 1;
-        }
-
-        .vignette {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-        }
-
-        .glitch {
-            position: absolute;
-            background-image: url(resources/background.gif);
-            background-position: center;
-            background-size: 50vw;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            opacity: 0.75;
-            z-index: -1;
-        }
-
-        canvas {
+        
+                canvas {
             display: none;
             user-select: none;
         }
 
-        #title {
-            position: absolute;
-            top: 10vh;
-            left: 5vw;
-            z-index: 1;
-            height: 20vh;
-        }
-
-        #animatronic {
-            position: absolute;
-            top: -5vh;
-            right: 7vw;
-            height: 120vh;
-        }
-
-        .loader {
-            position: absolute;
+        .selection {
+            height: 100vh;
+            width: 100%;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            left: 50%;
-            transform: translate(-50%, 0);
-            bottom: 12vh;
-            z-index: 1;
-            color: white;
-            font-family: monospace;
-            text-align: center;
-            font-weight: lighter;
-            width: 85vw;
+            justify-content: center;
+            overflow: hidden;
         }
 
         .loader h1 {
             margin: 0;
-            font-size: 5vw;
-        }
-
-        .loader hr{
-            margin: 0;
-            border: white solid 0.1vw;
-            width: 0%;
-        }
-
-        .loader h2 {
-            margin: 1vh 0;
-            font-size: 1.4vw;
+            color: #fff;
+            font-family: monospace;
+            font-size: 28px;
+            font-weight: normal;
         }
     </style>
-   
+
 
 </head>
 
 <body>
-    <canvas id="MMFCanvas" width="800" height="480"> Your browser does not support Canvas, Please try again.</canvas>
-        <div class="selection" id="selection">
-        <div class="loader">
-            <h1 id="percentage">0%</h1>
-        <img id="title" src="resources/title.png">
-        <img id="animatronic" src="resources/animatronic.png">
-        <div class="loader">
-            <h1 id="percentage">0%</h1>
-            <hr id="bar">
-            <h2 id="stage">STARTING UP...</h2>
-        </div>
-        <a href="https://discord.gg/xuu8TnSY4b">
-            <div class="launcher-text"><img src="resources/launcher-text.png" style="width: 45vw;"></div>
-        </a>
+    <canvas id="MMFCanvas" width="800" height="480">Your browser does not support Canvas, Please try again.</canvas>
+
+    <button id="mod-toggle">[M] MODS</button>
+    <div id="mod-menu">
+        <h3>FNaF World Mods [M]</h3>
+        <button class="mod-btn" onclick="modAddTokens(100)">+100 Faz Tokens</button>
+        <button class="mod-btn" onclick="modLevelUpParty(5)">+5 Lvls (Active Party)</button>
+        <button class="mod-btn" onclick="modUnlockAllChars()">Unlock All Characters</button>
+        <button class="mod-btn" onclick="modMaxArmor()">Max Endo Upgrade</button>
+        <button class="mod-btn" onclick="modToggleHardMode()">Toggle Hard Mode</button>
+        <div id="mod-status">Walk in world first, click a mod, then reload save.</div>
     </div>
-    <div class="glitch"></div>
-    <img src="resources/vignette.png" class="vignette">
+
+    <div class="selection" id="selection">
+        <div class="loader">
+            <h1 id="percentage">0%</h1>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-</body>
- 
-<!--Made by irv77-->
-<script>
-    const parts = 20;
-    let gametitle, runtimecanvas
-    gametitle = document.title;
-    runtimecanvas = "resources/fnafw.cch";
-    // Prevents touchscreen move
-    window.addEventListener("scroll", preventMotion, false);
-    window.addEventListener("touchmove", preventMotion, false);
-    function preventMotion(event) {
-        window.scrollTo(0, 0);
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    // Fullscreen Key
-    const pressedKeys = {};
-    document.addEventListener('keydown', event => {
-        pressedKeys[event.key] = true;
-        if (pressedKeys['-'] && pressedKeys['=']) {
-            document.querySelector('canvas').requestFullscreen();
-            delete pressedKeys[event.key];
-        }
-    });
-    document.addEventListener('keyup', (event) => {
-        delete pressedKeys[event.key];
-    });
-    // -----------------
-    
+
+    <script>
         const parts = 20;
         const gametitle = document.title;
         const runtimecanvas = "resources/fnafw.cch";
+
+        // Prevents touchscreen move
+        window.addEventListener("scroll", preventMotion, false);
+        window.addEventListener("touchmove", preventMotion, false);
+        function preventMotion(event) {
+            window.scrollTo(0, 0);
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        // Keyboard shortcuts (- and = for fullscreen, M for Mod Menu)
+        const pressedKeys = {};
+        document.addEventListener('keydown', event => {
+            pressedKeys[event.key] = true;
+            if (event.key === 'm' || event.key === 'M') toggleModMenu();
+            if (pressedKeys['-'] && pressedKeys['=']) {
+                document.querySelector('canvas').requestFullscreen();
+                delete pressedKeys[event.key];
+            }
+        });
+        document.addEventListener('keyup', (event) => {
+            delete pressedKeys[event.key];
+        });
+
+        // --- MOD MENU ---
+        const modMenu = document.getElementById('mod-menu');
+        const modStatus = document.getElementById('mod-status');
+
+        function toggleModMenu() {
+            modMenu.style.display = modMenu.style.display === 'block' ? 'none' : 'block';
+        }
+        document.getElementById('mod-toggle').addEventListener('click', toggleModMenu);
+
+        function setModStatus(msg, err = false) {
+            modStatus.style.color = err ? '#ff5555' : '#00ff88';
+            modStatus.textContent = msg;
+        }
+
+        function getActiveSaveKey() {
+            const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
+            if (!keys.length) return null;
+            return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length)[0];
+        }
+
+        function editIniValue(ini, keyName, val, add = true) {
+            const rx = new RegExp(`^(${keyName}=)(-?\\d+)`, 'mi');
+            return rx.test(ini)
+                ? ini.replace(rx, (_, p, n) => p + (add ? parseInt(n, 10) + val : val))
+                : ini + `\n${keyName}=${val}`;
+        }
+
+        function modAddTokens(amount) {
+            const key = getActiveSaveKey();
+            if (!key) return setModStatus('No save found! Walk in world first.', true);
+            localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'tokens', amount, true));
+            setModStatus(`+${amount} Faz Tokens added! Reload save in-game.`);
+        }
+
+        function modLevelUpParty(levels) {
+            const key = getActiveSaveKey();
+            if (!key) return setModStatus('No save found! Walk in world first.', true);
+            let ini = localStorage.getItem(key);
+            let count = 0;
+            for (let slot = 1; slot <= 4; slot++) {
+                const m = ini.match(new RegExp(`^s${slot}=(\\d+)`, 'mi'));
+                if (m && parseInt(m[1], 10) > 0) {
+                    ini = editIniValue(ini, `${m[1]}LV`, levels, true);
+                    count++;
+                }
+            }
+            if (!count) return setModStatus('No active party found!', true);
+            localStorage.setItem(key, ini);
+            setModStatus(`+${levels} Lvls added to active party! Reload save.`);
+        }
+
+        function modUnlockAllChars() {
+            const key = getActiveSaveKey();
+            if (!key) return setModStatus('No save found! Walk in world first.', true);
+            let ini = localStorage.getItem(key);
+            for (let id = 1; id <= 48; id++) ini = editIniValue(ini, `${id}have`, 1, false);
+            localStorage.setItem(key, ini);
+            setModStatus('All 48 characters unlocked! Reload save.');
+        }
+
+        function modMaxArmor() {
+            const key = getActiveSaveKey();
+            if (!key) return setModStatus('No save found! Walk in world first.', true);
+            localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'armor', 5, false));
+            setModStatus('Max Endo Upgrade equipped! Reload save.');
+        }
+
+        function modToggleHardMode() {
+            const key = getActiveSaveKey();
+            if (!key) return setModStatus('No save found! Walk in world first.', true);
+            let ini = localStorage.getItem(key);
+            const isHard = /^hard=1/mi.test(ini);
+            const nextVal = isHard ? 0 : 1;
+            ini = editIniValue(ini, 'hard', nextVal, false);
+            localStorage.setItem(key, ini);
+            setModStatus(`Switched to ${nextVal ? 'Hard Mode' : 'Normal Mode'}! Reload save.`);
+        }
+
+        // --- FAST LOADER & INDEXEDDB CACHE ---
         function openAssetDB() {
             return new Promise((resolve, reject) => {
                 const req = indexedDB.open('fnafw-unpacked-v1', 1);
@@ -283,39 +300,30 @@
             };
 
             for (const Tag of [HTMLImageElement, HTMLAudioElement, HTMLVideoElement]) {
-                const desc = Object.getOwnPropertyDescriptor(Tag.prototype, 'src');
-                if (desc && desc.set) {
-                    Object.defineProperty(Tag.prototype, 'src', {
-                        configurable: true,
-                        enumerable: true,
-                        get: desc.get,
-                        set(val) {
-                            if (typeof val === 'string' && val.startsWith('resources/')) {
-                                const f = val.split('/').pop();
-                                if (map.has(f)) val = map.get(f);
-                            }
-                            desc.set.call(this, val);
-                        }
-                    });
-                }
-            }
-
-            const script = document.createElement('script');
-            script.src = 'src/Runtime.js';
-            script.onload = () => new Runtime('MMFCanvas', runtimecanvas);
-            document.getElementById('MMFCanvas').style.display = 'block';
-            document.getElementById('selection').style.display = 'none';
-            document.title = gametitle;
-            document.head.appendChild(script);
-        };
-
-            wedone();
-        });
-    };
-
-</script>
-   
-
+const desc = Object.getOwnPropertyDescriptor(Tag.prototype, 'src');
+if (desc && desc.set) {
+Object.defineProperty(Tag.prototype, 'src', {
+configurable: true,
+enumerable: true,
+get: desc.get,
+set(val) {
+if (typeof val === 'string' && val.startsWith('resources/')) {
+const f = val.split('/').pop();
+if (map.has(f)) val = map.get(f);
+}
+desc.set.call(this, val);
+}
+});
+}
+}
+const script = document.createElement('script');
+script.src = 'src/Runtime.js';
+script.onload = () => new Runtime('MMFCanvas', runtimecanvas);
+document.getElementById('MMFCanvas').style.display = 'block';
+document.getElementById('selection').style.display = 'none';
+document.title = gametitle;
+document.head.appendChild(script);
+};
 
 </script>
 </body>
