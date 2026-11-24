@@ -184,6 +184,20 @@
         const modMenu = document.getElementById('mod-menu');
                 // Stop Clickteam Runtime from blocking clicks on the Mod Menu
         ['mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup', 'touchstart'].forEach(evt => {
+                    const modToggle = document.getElementById('mod-toggle');
+        const modMenu = document.getElementById('mod-menu');
+        const modStatus = document.getElementById('mod-status');
+
+        function toggleModMenu() {
+            modMenu.style.display = modMenu.style.display === 'block' ? 'none' : 'block';
+        }
+        modToggle.addEventListener('click', toggleModMenu);
+
+        ['mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup', 'touchstart'].forEach(evt => {
+            modToggle.addEventListener(evt, e => e.stopPropagation());
+            modMenu.addEventListener(evt, e => e.stopPropagation());
+        });
+
             modToggle.addEventListener(evt, e => e.stopPropagation());
             modMenu.addEventListener(evt, e => e.stopPropagation());
         });
@@ -195,13 +209,14 @@
         }
         document.getElementById('mod-toggle').addEventListener('click', toggleModMenu);
 
-                      function getActiveSaveKey() {
+                              function getActiveSaveKey() {
             const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
             if (!keys.length) return null;
             const slot1 = keys.find(k => /fnafw1/i.test(k) && (localStorage.getItem(k) || '').length > 10);
             if (slot1) return slot1;
-            return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length)[0];
+            return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length);
         }
+
 
 
         function editIniValue(ini, keyName, val, add = true) {
