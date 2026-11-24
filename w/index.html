@@ -7,131 +7,106 @@
     <title>Five Nights at Freddy's World</title>
     <link rel="icon" href="favicon.ico" />
     <style>
-                #mod-toggle {
-            position: fixed;
-            top: 12px;
-            right: 12px;
-            z-index: 10000;
-            background: rgba(15, 15, 20, 0.85);
-            color: #00ff88;
-            border: 1px solid #00ff88;
-            padding: 6px 12px;
-            font-family: monospace;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 4px;
-            opacity: 0.7;
-        }
-        #mod-toggle:hover { opacity: 1; }
 
-        #mod-menu {
-            position: fixed;
-            top: 48px;
-            right: 12px;
-            width: 240px;
-            background: rgba(12, 12, 18, 0.94);
-            color: #fff;
-            border: 1px solid #00ff88;
-            border-radius: 6px;
-            padding: 12px;
-            z-index: 10000;
-            display: none;
-            font-family: monospace;
-        }
-        #mod-menu h3 {
-            margin: 0 0 8px 0;
-            font-size: 14px;
-            color: #00ff88;
-            border-bottom: 1px solid #2a2a38;
-            padding-bottom: 6px;
-        }
-        .mod-btn {
-            width: 100%;
-            background: #1b1b26;
-            color: #fff;
-            border: 1px solid #333346;
-            padding: 8px 10px;
-            margin-bottom: 6px;
-            font-family: monospace;
-            font-size: 12px;
-            text-align: left;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        .mod-btn:hover {
-            border-color: #00ff88;
-            color: #00ff88;
-        }
-        #mod-status {
-            margin-top: 6px;
-            font-size: 11px;
-            color: #aaa;
-        }
-
-        html {
-            display: block;
-            -webkit-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            overflow: hidden;
-            height: 100%;
-        }
-
-        body {
-            position: relative;
-            background-color: black;
-            background-image: url(resources/office.png);
-            background-position: center;
-            background-size: cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
-            height: 100%;
-        }
-
-        a {
-            text-decoration: none;
-        }
-
-        .selection {
-            height: auto;
-            min-height: 100vh;
-            width: 100%;
-            display: flex;
-            overflow: hidden;
-        }
-
-        
-                canvas {
-            display: none;
-            user-select: none;
-        }
-
-        .selection {
-            height: 100vh;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        .loader h1 {
-            margin: 0;
-            color: #fff;
-            font-family: monospace;
-            font-size: 28px;
-            font-weight: normal;
-        }
     </style>
-
+  
 
 </head>
 
 <body>
-    <canvas id="MMFCanvas" width="800" height="480">Your browser does not support Canvas, Please try again.</canvas>
+    <canvas id="MMFCanvas" width="800" height="600"> Your browser does not support Canvas, Please try again.</canvas>
+    <button id="mod-toggle">[M] MODS</button>
+<div id="mod-menu">
+    <h3>FNaF World Mods [M]</h3>
+    <button class="mod-btn" onclick="modAddTokens(100)">+100 Faz Tokens</button>
+    <button class="mod-btn" onclick="modLevelUpParty(5)">+5 Lvls (Active Party)</button>
+    <button class="mod-btn" onclick="modUnlockAllChars()">Unlock All Characters</button>
+    <button class="mod-btn" onclick="modMaxArmor()">Max Endo Upgrade</button>
+    <div id="mod-status">Walk in world first, click a mod, then reload save.</div>
+</div>
+
+    <div class="selection" id="selection">
+        <img id="title" src="resources/title.png">
+        <img id="animatronic" src="resources/animatronic.png">
+ <h2 id="stage">STARTING UP...</h2>
+    };
+
+</script>
+    const modMenu = document.getElementById('mod-menu');
+const modStatus = document.getElementById('mod-status');
+
+function toggleModMenu() {
+    modMenu.style.display = modMenu.style.display === 'block' ? 'none' : 'block';
+}
+document.getElementById('mod-toggle').addEventListener('click', toggleModMenu);
+document.addEventListener('keydown', e => {
+    if (e.key === 'm' || e.key === 'M') toggleModMenu();
+});
+
+function setModStatus(msg, err = false) {
+    modStatus.style.color = err ? '#ff5555' : '#00ff88';
+    modStatus.textContent = msg;
+}
+
+function getActiveSaveKey() {
+    const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
+    if (!keys.length) return null;
+    return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length)[0];
+}
+
+function editIniValue(ini, keyName, val, add = true) {
+    const rx = new RegExp(`^(${keyName}=)(-?\\d+)`, 'mi');
+    return rx.test(ini)
+        ? ini.replace(rx, (_, p, n) => p + (add ? parseInt(n, 10) + val : val))
+        : ini + `\n${keyName}=${val}`;
+}
+
+function modAddTokens(amount) {
+    const key = getActiveSaveKey();
+    if (!key) return setModStatus('No save found! Walk in world first.', true);
+    localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'tokens', amount, true));
+    setModStatus(`+${amount} Faz Tokens added! Reload save in-game.`);
+}
+
+function modLevelUpParty(levels) {
+    const key = getActiveSaveKey();
+    if (!key) return setModStatus('No save found! Walk in world first.', true);
+    let ini = localStorage.getItem(key);
+    let count = 0;
+    for (let slot = 1; slot <= 4; slot++) {
+        const m = ini.match(new RegExp(`^s${slot}=(\\d+)`, 'mi'));
+        if (m && parseInt(m[1], 10) > 0) {
+            ini = editIniValue(ini, `${m[1]}LV`, levels, true);
+            count++;
+        }
+    }
+    if (!count) return setModStatus('No active party found!', true);
+    localStorage.setItem(key, ini);
+    setModStatus(`+${levels} Lvls added to active party! Reload save.`);
+}
+
+function modUnlockAllChars() {
+    const key = getActiveSaveKey();
+    if (!key) return setModStatus('No save found! Walk in world first.', true);
+    let ini = localStorage.getItem(key);
+    for (let id = 1; id <= 48; id++) ini = editIniValue(ini, `${id}have`, 1, false);
+    localStorage.setItem(key, ini);
+    setModStatus('All 48 characters unlocked! Reload save.');
+}
+
+function modMaxArmor() {
+    const key = getActiveSaveKey();
+    if (!key) return setModStatus('No save found! Walk in world first.', true);
+    localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'armor', 5, false));
+    setModStatus('Max Endo Upgrade equipped! Reload save.');
+}
+
+
+</script>
+
+
+<body>
+    <canvas id="MMFCanvas" width="800" height="600">Your browser does not support Canvas, Please try again.</canvas>
 
     <button id="mod-toggle">[M] MODS</button>
     <div id="mod-menu">
