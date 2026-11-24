@@ -7,16 +7,7 @@
     <title>Five Nights at Freddy's World</title>
     <link rel="icon" href="favicon.ico" />
     <style>
-        <button id="mod-toggle">[M] MODS</button>
-<div id="mod-menu">
-    <h3>FNaF World Mods [M]</h3>
-    <button class="mod-btn" onclick="modAddTokens(100)">+100 Faz Tokens</button>
-    <button class="mod-btn" onclick="modLevelUpParty(5)">+5 Lvls (Active Party)</button>
-    <button class="mod-btn" onclick="modUnlockAllChars()">Unlock All Characters</button>
-    <button class="mod-btn" onclick="modMaxArmor()">Max Endo Upgrade</button>
-        <button class="mod-btn" onclick="modToggleHardMode()">Toggle Hard Mode</button>
-    <div id="mod-status">Walk in world first, click a mod, then reload save.</div>
-</div>
+        
 
         html {
             display: block;
@@ -141,17 +132,9 @@
 
 <body>
     <canvas id="MMFCanvas" width="800" height="480"> Your browser does not support Canvas, Please try again.</canvas>
-    <button id="mod-toggle">[M] MODS</button>
-<div id="mod-menu">
-    <h3>FNaF World Mods [M]</h3>
-    <button class="mod-btn" onclick="modAddTokens(100)">+100 Faz Tokens</button>
-    <button class="mod-btn" onclick="modLevelUpParty(5)">+5 Lvls (Active Party)</button>
-    <button class="mod-btn" onclick="modUnlockAllChars()">Unlock All Characters</button>
-    <button class="mod-btn" onclick="modMaxArmor()">Max Endo Upgrade</button>
-    <div id="mod-status">Walk in world first, click a mod, then reload save.</div>
-</div>
-
-    <div class="selection" id="selection">
+        <div class="selection" id="selection">
+        <div class="loader">
+            <h1 id="percentage">0%</h1>
         <img id="title" src="resources/title.png">
         <img id="animatronic" src="resources/animatronic.png">
         <div class="loader">
@@ -196,246 +179,142 @@
     });
     // -----------------
     window.onload = function () {
-        const map = new Map();
-
-        function updateProgress(text, percent) {
-            document.title = percent + '% ' + gametitle
-            document.getElementById('percentage').innerHTML = percent + '%';
-            document.getElementById('bar').style.width = percent + '%';
-            document.getElementById('stage').innerHTML = text;
+        const parts = 20;
+        const gametitle = document.title;
+        const runtimecanvas = "resources/fnafw.cch";
+        function openAssetDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open('fnafw-unpacked-v1', 1);
+                req.onupgradeneeded = () => req.result.createObjectStore('files');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
         }
 
-        async function intercept() {
+        async function loadFromDB(db) {
+            return new Promise((resolve) => {
+                const tx = db.transaction('files', 'readonly');
+                const store = tx.objectStore('files');
+                const keysReq = store.getAllKeys();
+                const valsReq = store.getAll();
+                tx.oncomplete = () => {
+                    if (!keysReq.result.length) return resolve(null);
+                    const map = new Map();
+                    keysReq.result.forEach((k, i) => map.set(k, URL.createObjectURL(valsReq.result[i])));
+                    resolve(map);
+                };
+                tx.onerror = () => resolve(null);
+            });
+        }
+
+        async function saveToDB(db, entries) {
+            return new Promise((resolve) => {
+                const tx = db.transaction('files', 'readwrite');
+                const store = tx.objectStore('files');
+                for (const [name, blob] of entries) store.put(blob, name);
+                tx.oncomplete = resolve;
+                tx.onerror = resolve;
+            });
+        }
+
+        window.onload = async function () {
+            const pctEl = document.getElementById('percentage');
+            let lastPct = -1;
+            function setPct(p) {
+                const c = Math.min(100, Math.max(0, Math.floor(p)));
+                if (c !== lastPct) {
+                    lastPct = c;
+                    pctEl.textContent = c + '%';
+                    document.title = c + '% ' + gametitle;
+                }
+            }
+
+            const db = await openAssetDB().catch(() => null);
+            let map = db ? await loadFromDB(db) : null;
+
+            if (!map) {
+                map = new Map();
+                const rawEntries = [];
+                let done = 0;
+
+                const buffers = await Promise.all(
+                    Array.from({ length: parts }, (_, i) =>
+                        fetch(`src/resources.zip.part${i + 1}`)
+                            .then(r => r.arrayBuffer())
+                            .then(b => { setPct((++done / parts) * 50); return b; })
+                    )
+                );
+
+                const zip = await JSZip.loadAsync(await new Blob(buffers).arrayBuffer());
+                const names = Object.keys(zip.files).filter(n => !zip.files[n].dir);
+                let unzipped = 0;
+
+                for (let i = 0; i < names.length; i += 60) {
+                    await Promise.all(names.slice(i, i + 60).map(async name => {
+                        const blob = await zip.files[name].async('blob');
+                        map.set(name, URL.createObjectURL(blob));
+                        rawEntries.push([name, blob]);
+                        unzipped++;
+                    }));
+                    setPct(50 + (unzipped / names.length) * 50);
+                }
+
+                if (db) await saveToDB(db, rawEntries);
+            } else {
+                setPct(100);
+            }
+
             const ogfetch = window.fetch;
-            window.fetch = async function (input, init) {
+            window.fetch = (input, init) => {
                 if (typeof input === 'string' && input.startsWith('resources/')) {
-                    const fileName = input.split('/').pop();
-                    if (map.has(fileName)) {
-                        return ogfetch(map.get(fileName), init);
-                    }
+                    const f = input.split('/').pop();
+                    if (map.has(f)) return ogfetch(map.get(f), init);
                 }
                 return ogfetch(input, init);
             };
 
             const ogopen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function (method, url) {
-                if (url.startsWith('resources/')) {
-                    const fileName = url.split('/').pop();
-                    if (map.has(fileName)) {
-                        url = map.get(fileName);
-                    }
+                if (typeof url === 'string' && url.startsWith('resources/')) {
+                    const f = url.split('/').pop();
+                    if (map.has(f)) url = map.get(f);
                 }
                 return ogopen.apply(this, arguments);
             };
 
-            const types = [HTMLImageElement, HTMLAudioElement, HTMLVideoElement];
-            for (const Tag of types) {
-                const descriptor = Object.getOwnPropertyDescriptor(Tag.prototype, 'src');
-                if (descriptor && descriptor.set) {
+            for (const Tag of [HTMLImageElement, HTMLAudioElement, HTMLVideoElement]) {
+                const desc = Object.getOwnPropertyDescriptor(Tag.prototype, 'src');
+                if (desc && desc.set) {
                     Object.defineProperty(Tag.prototype, 'src', {
                         configurable: true,
                         enumerable: true,
-                        get: descriptor.get,
-                        set: function (val) {
+                        get: desc.get,
+                        set(val) {
                             if (typeof val === 'string' && val.startsWith('resources/')) {
-                                const fileName = val.split('/').pop();
-                                if (map.has(fileName)) {
-                                    val = map.get(fileName);
-                                }
+                                const f = val.split('/').pop();
+                                if (map.has(f)) val = map.get(f);
                             }
-                            descriptor.set.call(this, val);
+                            desc.set.call(this, val);
                         }
                     });
                 }
             }
-        }
-
-        async function extract() {
-            const res = await fetch("resources.zip");
-
-            const contentLength = res.headers.get("Content-Length");
-            const total = parseInt(contentLength, 10);
-            const reader = res.body.getReader();
-            let loaded = 0;
-            const chunks = [];
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-                loaded += value.length;
-                updateProgress('RETURNING GEARS...', Math.floor((loaded / total / 2) * 100));
-            }
-
-            const arrayBuffer = await new Blob(chunks).arrayBuffer();
-            const zip = await JSZip.loadAsync(arrayBuffer);
-            const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
-            const totalFiles = files.length;
-
-            for (let i = 0; i < totalFiles; i++) {
-                const file = zip.files[files[i]];
-                const blob = await file.async("blob");
-                const url = URL.createObjectURL(blob);
-                map.set(files[i], url);
-                updateProgress('BOOTING UP ARCHIVE...', Math.floor(((i + 1) / totalFiles / 2) * 100 + 50));
-            }
-        }
-
-        async function wedone() {
-            await extract();
-            await intercept();
 
             const script = document.createElement('script');
             script.src = 'src/Runtime.js';
-            script.onload = () => {
-                new Runtime("MMFCanvas", runtimecanvas);
-            };
+            script.onload = () => new Runtime('MMFCanvas', runtimecanvas);
             document.getElementById('MMFCanvas').style.display = 'block';
             document.getElementById('selection').style.display = 'none';
             document.title = gametitle;
             document.head.appendChild(script);
-        }
+        };
 
-        const originalFetch = window.fetch;
-
-        function mergeFiles(fileParts) {
-            return new Promise((resolve, reject) => {
-                let buffers = [];
-                let totalSize = 0;
-                let loadedSize = 0;
-                Promise.all(fileParts.map(part =>
-                    fetch(part, { method: 'HEAD' }).then(res => {
-                        try {
-                            if (!res.ok) throw new Error("Missing part: " + part);
-                            return parseInt(res.headers.get("Content-Length") || "0", 10);
-                        } catch (error) { document.getElementById('stage').innerHTML = "ERROR: MISSING FILE(S)..." }
-                    })
-                )).then(sizes => {
-                    totalSize = sizes.reduce((a, b) => a + b, 0);
-                    function fetchPart(index) {
-                        if (index >= fileParts.length) {
-                            let mergedBlob = new Blob(buffers);
-                            let mergedFileUrl = URL.createObjectURL(mergedBlob);
-                            resolve(mergedFileUrl);
-                            return;
-                        }
-
-                        fetch(fileParts[index]).then((response) => {
-                            if (!response.ok) throw new Error("Missing part: " + fileParts[index]);
-                            return response.arrayBuffer();
-                        }).then((data) => {
-                            buffers.push(data);
-                            loadedSize += data.byteLength;
-                            updateProgress('LOCATING ARCHIVE...', Math.floor((loadedSize / totalSize / 2) * 100));
-                            fetchPart(index + 1);
-                        }).catch(reject);
-                    }
-
-                    fetchPart(0);
-                }).catch(reject);
-            });
-        }
-
-        function getParts(file, start, end) {
-            let parts = [];
-            for (let i = start; i <= end; i++) {
-                parts.push(file + ".part" + i);
-            }
-            return parts;
-        }
-        Promise.all([
-            mergeFiles(getParts("src/resources.zip", 1, parts))
-        ]).then(([resources]) => {
-            window.fetch = async function (url, ...args) {
-                if (url.endsWith("resources.zip")) {
-                    return originalFetch(resources, ...args);
-                } else {
-                    return originalFetch(url, ...args);
-                }
-            };
             wedone();
         });
     };
 
-<script>
-    const modMenu = document.getElementById('mod-menu');
-const modStatus = document.getElementById('mod-status');
-
-function toggleModMenu() {
-    modMenu.style.display = modMenu.style.display === 'block' ? 'none' : 'block';
-}
-document.getElementById('mod-toggle').addEventListener('click', toggleModMenu);
-document.addEventListener('keydown', e => {
-    if (e.key === 'm' || e.key === 'M') toggleModMenu();
-});
-
-function setModStatus(msg, err = false) {
-    modStatus.style.color = err ? '#ff5555' : '#00ff88';
-    modStatus.textContent = msg;
-}
-
-function getActiveSaveKey() {
-    const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
-    if (!keys.length) return null;
-    return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length)[0];
-}
-
-function editIniValue(ini, keyName, val, add = true) {
-    const rx = new RegExp(`^(${keyName}=)(-?\\d+)`, 'mi');
-    return rx.test(ini)
-        ? ini.replace(rx, (_, p, n) => p + (add ? parseInt(n, 10) + val : val))
-        : ini + `\n${keyName}=${val}`;
-}
-
-function modAddTokens(amount) {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'tokens', amount, true));
-    setModStatus(`+${amount} Faz Tokens added! Reload save in-game.`);
-}
-
-function modLevelUpParty(levels) {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    let ini = localStorage.getItem(key);
-    let count = 0;
-    for (let slot = 1; slot <= 4; slot++) {
-        const m = ini.match(new RegExp(`^s${slot}=(\\d+)`, 'mi'));
-        if (m && parseInt(m[1], 10) > 0) {
-            ini = editIniValue(ini, `${m[1]}LV`, levels, true);
-            count++;
-        }
-    }
-    if (!count) return setModStatus('No active party found!', true);
-    localStorage.setItem(key, ini);
-    setModStatus(`+${levels} Lvls added to active party! Reload save.`);
-}
-
-function modUnlockAllChars() {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    let ini = localStorage.getItem(key);
-    for (let id = 1; id <= 48; id++) ini = editIniValue(ini, `${id}have`, 1, false);
-    localStorage.setItem(key, ini);
-    setModStatus('All 48 characters unlocked! Reload save.');
-}
-
-function modMaxArmor() {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    localStorage.setItem(key, editIniValue(localStorage.getItem(key), 'armor', 5, false));
-    setModStatus('Max Endo Upgrade equipped! Reload save.');
-}
-function modToggleHardMode() {
-    const key = getActiveSaveKey();
-    if (!key) return setModStatus('No save found! Walk in world first.', true);
-    let ini = localStorage.getItem(key);
-    const isHard = /^hard=1/mi.test(ini);
-    const nextVal = isHard ? 0 : 1;
-    ini = editIniValue(ini, 'hard', nextVal, false);
-    localStorage.setItem(key, ini);
-    setModStatus(`Switched to ${nextVal ? 'Hard Mode' : 'Normal Mode'}! Reload save.`);
-}
+</script>
+   
 
 
 </script>
