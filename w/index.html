@@ -182,6 +182,12 @@
 
         // --- MOD MENU ---
         const modMenu = document.getElementById('mod-menu');
+                // Stop Clickteam Runtime from blocking clicks on the Mod Menu
+        ['mousedown', 'mouseup', 'click', 'pointerdown', 'pointerup', 'touchstart'].forEach(evt => {
+            modToggle.addEventListener(evt, e => e.stopPropagation());
+            modMenu.addEventListener(evt, e => e.stopPropagation());
+        });
+
         const modStatus = document.getElementById('mod-status');
 
         function toggleModMenu() {
@@ -189,14 +195,14 @@
         }
         document.getElementById('mod-toggle').addEventListener('click', toggleModMenu);
 
-               function getActiveSaveKey() {
+                      function getActiveSaveKey() {
             const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
             if (!keys.length) return null;
-            // Prefer fnafw1 if it has data, otherwise pick the longest save file
             const slot1 = keys.find(k => /fnafw1/i.test(k) && (localStorage.getItem(k) || '').length > 10);
             if (slot1) return slot1;
             return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length)[0];
         }
+
 
         function editIniValue(ini, keyName, val, add = true) {
             const rx = new RegExp(`^(${keyName}\\s*=\\s*)(-?\\d+)`, 'mi');
