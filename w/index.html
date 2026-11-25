@@ -7,9 +7,7 @@
     <title>Five Nights at Freddy's World</title>
     <link rel="icon" href="favicon.ico" />
     <style>
-
-    </style>
-  html {
+        html {
             display: block;
             -webkit-user-select: none;
             -ms-user-select: none;
@@ -125,176 +123,547 @@
             margin: 1vh 0;
             font-size: 1.4vw;
         }
-
+    </style>
 </head>
 
 <body>
-    <canvas id="MMFCanvas" width="800" height="600"> Your browser does not support Canvas, Please try again.</canvas>
-   
+    <canvas id="MMFCanvas" width="800" height="480"> Your browser does not support Canvas, Please try again.</canvas>
     <div class="selection" id="selection">
         <img id="title" src="resources/title.png">
         <img id="animatronic" src="resources/animatronic.png">
- <h2 id="stage">STARTING UP...</h2>
-    };
-
-</script>
-  
-function getActiveSaveKey() {
-    const keys = Object.keys(localStorage).filter(k => /fnafw[1-3]/i.test(k));
-    if (!keys.length) return null;
-    return keys.sort((a, b) => (localStorage.getItem(b) || '').length - (localStorage.getItem(a) || '').length)[0];
-}
-
-function editIniValue(ini, keyName, val, add = true) {
-    const rx = new RegExp(`^(${keyName}=)(-?\\d+)`, 'mi');
-    return rx.test(ini)
-        ? ini.replace(rx, (_, p, n) => p + (add ? parseInt(n, 10) + val : val))
-        : ini + `\n${keyName}=${val}`;
-}
-
-
-</script>
-
-
-<body>
-    <canvas id="MMFCanvas" width="800" height="600">Your browser does not support Canvas, Please try again.</canvas>
-
-   
-    <div class="selection" id="selection">
         <div class="loader">
             <h1 id="percentage">0%</h1>
+            <hr id="bar">
+            <h2 id="stage">STARTING UP...</h2>
         </div>
+        <a href="https://discord.gg/xuu8TnSY4b">
+            <div class="launcher-text"><img src="resources/launcher-text.png" style="width: 45vw;"></div>
+        </a>
     </div>
-
+    <div class="glitch"></div>
+    <img src="resources/vignette.png" class="vignette">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</body>
+ 
+<!--Made by irv77-->
+<script>
+    const parts = 20;
+    let gametitle, runtimecanvas
+    gametitle = document.title;
+    runtimecanvas = "resources/fnafw.cch";
+    // Prevents touchscreen move
+    window.addEventListener("scroll", preventMotion, false);
+    window.addEventListener("touchmove", preventMotion, false);
+    function preventMotion(event) {
+        window.scrollTo(0, 0);
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    // Fullscreen Key
+    const pressedKeys = {};
+    document.addEventListener('keydown', event => {
+        pressedKeys[event.key] = true;
+        if (pressedKeys['-'] && pressedKeys['=']) {
+            document.querySelector('canvas').requestFullscreen();
+            delete pressedKeys[event.key];
+        }
+    });
+    document.addEventListener('keyup', (event) => {
+        delete pressedKeys[event.key];
+    });
+    // -----------------
+    window.onload = function () {
+        const map = new Map();
 
-    <script>
-        const parts = 20;
-        const gametitle = document.title;
-        const runtimecanvas = "resources/fnafw.cch";
-
-        // Prevents touchscreen move
-        window.addEventListener("scroll", preventMotion, false);
-        window.addEventListener("touchmove", preventMotion, false);
-        function preventMotion(event) {
-            window.scrollTo(0, 0);
-            event.preventDefault();
-            event.stopPropagation();
+        function updateProgress(text, percent) {
+            document.title = percent + '% ' + gametitle
+            document.getElementById('percentage').innerHTML = percent + '%';
+            document.getElementById('bar').style.width = percent + '%';
+            document.getElementById('stage').innerHTML = text;
         }
 
-        // Keyboard shortcuts (- and = for fullscreen,
-        const pressedKeys = {};
-        document.addEventListener('keydown', event => {
-            pressedKeys[event.key] = true;
-           
-            if (pressedKeys['-'] && pressedKeys['=']) {
-                document.querySelector('canvas').requestFullscreen();
-                delete pressedKeys[event.key];
-            }
-        });
-        document.addEventListener('keyup', (event) => {
-            delete pressedKeys[event.key];
-        });
-
-       
-
-        window.onload = async function () {
-            const pctEl = document.getElementById('percentage');
-            let lastPct = -1;
-            function setPct(p) {
-                const c = Math.min(100, Math.max(0, Math.floor(p)));
-                if (c !== lastPct) {
-                    lastPct = c;
-                    pctEl.textContent = c + '%';
-                    document.title = c + '% ' + gametitle;
-                }
-            }
-
-            const db = await openAssetDB().catch(() => null);
-            let map = db ? await loadFromDB(db) : null;
-
-            if (!map) {
-                map = new Map();
-                const rawEntries = [];
-                let done = 0;
-
-                const buffers = await Promise.all(
-                    Array.from({ length: parts }, (_, i) =>
-                        fetch(`src/resources.zip.part${i + 1}`)
-                            .then(r => r.arrayBuffer())
-                            .then(b => { setPct((++done / parts) * 50); return b; })
-                    )
-                );
-
-                const zip = await JSZip.loadAsync(await new Blob(buffers).arrayBuffer());
-                const names = Object.keys(zip.files).filter(n => !zip.files[n].dir);
-                let unzipped = 0;
-
-                for (let i = 0; i < names.length; i += 60) {
-                    await Promise.all(names.slice(i, i + 60).map(async name => {
-                        const blob = await zip.files[name].async('blob');
-                        map.set(name, URL.createObjectURL(blob));
-                        rawEntries.push([name, blob]);
-                        unzipped++;
-                    }));
-                    setPct(50 + (unzipped / names.length) * 50);
-                }
-
-                if (db) await saveToDB(db, rawEntries);
-            } else {
-                setPct(100);
-            }
-
+        async function intercept() {
             const ogfetch = window.fetch;
-            window.fetch = (input, init) => {
+            window.fetch = async function (input, init) {
                 if (typeof input === 'string' && input.startsWith('resources/')) {
-                    const f = input.split('/').pop();
-                    if (map.has(f)) return ogfetch(map.get(f), init);
+                    const fileName = input.split('/').pop();
+                    if (map.has(fileName)) {
+                        return ogfetch(map.get(fileName), init);
+                    }
                 }
                 return ogfetch(input, init);
             };
 
             const ogopen = XMLHttpRequest.prototype.open;
             XMLHttpRequest.prototype.open = function (method, url) {
-                if (typeof url === 'string' && url.startsWith('resources/')) {
-                    const f = url.split('/').pop();
-                    if (map.has(f)) url = map.get(f);
+                if (url.startsWith('resources/')) {
+                    const fileName = url.split('/').pop();
+                    if (map.has(fileName)) {
+                        url = map.get(fileName);
+                    }
                 }
                 return ogopen.apply(this, arguments);
             };
 
-            for (const Tag of [HTMLImageElement, HTMLAudioElement, HTMLVideoElement]) {
-const desc = Object.getOwnPropertyDescriptor(Tag.prototype, 'src');
-if (desc && desc.set) {
-Object.defineProperty(Tag.prototype, 'src', {
-configurable: true,
-enumerable: true,
-get: desc.get,
-set(val) {
-if (typeof val === 'string' && val.startsWith('resources/')) {
-const f = val.split('/').pop();
-if (map.has(f)) val = map.get(f);
-}
-desc.set.call(this, val);
-}
-});
-}
-}
-const script = document.createElement('script');
-script.src = 'src/Runtime.js';
-script.onload = () => new Runtime('MMFCanvas', runtimecanvas);
-document.getElementById('MMFCanvas').style.display = 'block';
-document.getElementById('selection').style.display = 'none';
-document.title = gametitle;
-document.head.appendChild(script);
-};
+            const types = [HTMLImageElement, HTMLAudioElement, HTMLVideoElement];
+            for (const Tag of types) {
+                const descriptor = Object.getOwnPropertyDescriptor(Tag.prototype, 'src');
+                if (descriptor && descriptor.set) {
+                    Object.defineProperty(Tag.prototype, 'src', {
+                        configurable: true,
+                        enumerable: true,
+                        get: descriptor.get,
+                        set: function (val) {
+                            if (typeof val === 'string' && val.startsWith('resources/')) {
+                                const fileName = val.split('/').pop();
+                                if (map.has(fileName)) {
+                                    val = map.get(fileName);
+                                }
+                            }
+                            descriptor.set.call(this, val);
+                        }
+                    });
+                }
+            }
+        }
 
+        async function extract() {
+            const res = await fetch("resources.zip");
+
+            const contentLength = res.headers.get("Content-Length");
+            const total = parseInt(contentLength, 10);
+            const reader = res.body.getReader();
+            let loaded = 0;
+            const chunks = [];
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                loaded += value.length;
+                updateProgress('RETURNING GEARS...', Math.floor((loaded / total / 2) * 100));
+            }
+
+            const arrayBuffer = await new Blob(chunks).arrayBuffer();
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+            const totalFiles = files.length;
+
+            for (let i = 0; i < totalFiles; i++) {
+                const file = zip.files[files[i]];
+                const blob = await file.async("blob");
+                const url = URL.createObjectURL(blob);
+                map.set(files[i], url);
+                updateProgress('BOOTING UP ARCHIVE...', Math.floor(((i + 1) / totalFiles / 2) * 100 + 50));
+            }
+        }
+
+        async function wedone() {
+            await extract();
+            await intercept();
+
+            const script = document.createElement('script');
+            script.src = 'src/Runtime.js';
+            script.onload = () => {
+                new Runtime("MMFCanvas", runtimecanvas);
+            };
+            document.getElementById('MMFCanvas').style.display = 'block';
+            document.getElementById('selection').style.display = 'none';
+            document.title = gametitle;
+            document.head.appendChild(script);
+        }
+
+        const originalFetch = window.fetch;
+
+        function mergeFiles(fileParts) {
+            return new Promise((resolve, reject) => {
+                let buffers = [];
+                let totalSize = 0;
+                let loadedSize = 0;
+                Promise.all(fileParts.map(part =>
+                    fetch(part, { method: 'HEAD' }).then(res => {
+                        try {
+                            if (!res.ok) throw new Error("Missing part: " + part);
+                            return parseInt(res.headers.get("Content-Length") || "0", 10);
+                        } catch (error) { document.getElementById('stage').innerHTML = "ERROR: MISSING FILE(S)..." }
+                    })
+                )).then(sizes => {
+                    totalSize = sizes.reduce((a, b) => a + b, 0);
+                    function fetchPart(index) {
+                        if (index >= fileParts.length) {
+                            let mergedBlob = new Blob(buffers);
+                            let mergedFileUrl = URL.createObjectURL(mergedBlob);
+                            resolve(mergedFileUrl);
+                            return;
+                        }
+
+                        fetch(fileParts[index]).then((response) => {
+                            if (!response.ok) throw new Error("Missing part: " + fileParts[index]);
+                            return response.arrayBuffer();
+                        }).then((data) => {
+                            buffers.push(data);
+                            loadedSize += data.byteLength;
+                            updateProgress('LOCATING ARCHIVE...', Math.floor((loadedSize / totalSize / 2) * 100));
+                            fetchPart(index + 1);
+                        }).catch(reject);
+                    }
+
+                    fetchPart(0);
+                }).catch(reject);
+            });
+        }
+
+        function getParts(file, start, end) {
+            let parts = [];
+            for (let i = start; i <= end; i++) {
+                parts.push(file + ".part" + i);
+            }
+            return parts;
+        }
+        Promise.all([
+            mergeFiles(getParts("src/resources.zip", 1, parts))
+        ]).then(([resources]) => {
+            window.fetch = async function (url, ...args) {
+                if (url.endsWith("resources.zip")) {
+                    return originalFetch(resources, ...args);
+                } else {
+                    return originalFetch(url, ...args);
+                }
+            };
+            wedone();
+        });
+    };
 </script>
+<!-- FNaF World Update 2 Compact Mod Menu -->
+<style>
+  #fnafw-mod-btn {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    z-index: 999999;
+    background: #1e1e2e;
+    color: #fff;
+    border: 1px solid #ff6b00;
+    padding: 5px 10px;
+    font-family: monospace;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  #fnafw-mod-menu {
+    display: none;
+    position: fixed;
+    top: 36px;
+    right: 8px;
+    width: 215px;
+    z-index: 999999;
+    background: rgba(18, 18, 28, 0.96);
+    color: #fff;
+    border: 1px solid #ff6b00;
+    border-radius: 6px;
+    padding: 9px;
+    font-family: monospace;
+    font-size: 11px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+  }
+  #fnafw-mod-menu h4 {
+    margin: 0 0 6px 0;
+    font-size: 12px;
+    color: #ff9d42;
+    border-bottom: 1px solid #333;
+    padding-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mod-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 3px 0;
+  }
+  .mod-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 7px;
+  }
+  .mod-btn {
+    background: #2e2e42;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 4px 5px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 3px;
+    text-align: center;
+  }
+  .mod-btn:hover {
+    background: #3d3d56;
+  }
+  .mod-btn.primary {
+    background: #ff6b00;
+    border-color: #ff6b00;
+    grid-column: span 2;
+    font-size: 11px;
+    padding: 5px;
+  }
+  .mod-btn.primary:hover {
+    background: #e05e00;
+  }
+  #fnafw-status {
+    margin-top: 5px;
+    font-size: 10px;
+    color: #9ef01a;
+  }
+  select {
+    background: #2b2b3d;
+    color: #fff;
+    border: 1px solid #555;
+    font-size: 10px;
+    padding: 1px 3px;
+    font-family: monospace;
+  }
+</style>
+
+<button id="fnafw-mod-btn">Mod Menu</button>
+
+<div id="fnafw-mod-menu">
+  <h4>
+    <span>Update 2 Mod</span>
+    <select id="fnafw-slot">
+      <option value="1">Slot 1</option>
+      <option value="2">Slot 2</option>
+      <option value="3">Slot 3</option>
+    </select>
+  </h4>
+
+  <div id="fnafw-char-list"></div>
+
+  <div class="mod-grid">
+    <button class="mod-btn" id="fnafw-unlock-all">All U2 Chars</button>
+    <button class="mod-btn" id="fnafw-equip-u2">Equip U2 Team</button>
+    <button class="mod-btn" id="fnafw-tokens">+999 Tokens</button>
+    <button class="mod-btn" id="fnafw-lvl10">+10 Party Lvl</button>
+    <button class="mod-btn" id="fnafw-boss" style="grid-column: span 2;">Boss Warp (Geist Lair)</button>
+    <button class="mod-btn primary" id="fnafw-apply">Save & Reload</button>
+  </div>
+
+  <div id="fnafw-status">Ready</div>
+</div>
+
+<script>
+(function() {
+  const update2Chars = [
+    { id: 41, name: "Jack-O-Bonnie" },
+    { id: 42, name: "Jack-O-Chica" },
+    { id: 43, name: "Animdude" },
+    { id: 44, name: "Mr. Chipper" },
+    { id: 45, name: "Nightmare BB" },
+    { id: 46, name: "Nightmarionne" },
+    { id: 47, name: "Coffee" },
+    { id: 48, name: "Purple Guy" }
+  ];
+
+  let lockSaveWrites = false;
+  const origSetItem = Storage.prototype.setItem;
+  Storage.prototype.setItem = function(k, v) {
+    if (lockSaveWrites && k && k.toLowerCase().includes("fnafw")) return;
+    return origSetItem.apply(this, arguments);
+  };
+
+  const btn = document.getElementById("fnafw-mod-btn");
+  const menu = document.getElementById("fnafw-mod-menu");
+  const list = document.getElementById("fnafw-char-list");
+  const slotSelect = document.getElementById("fnafw-slot");
+  const statusEl = document.getElementById("fnafw-status");
+
+  // Pending quick-action flags
+  let addTokens = 0;
+  let addPartyLevels = 0;
+  let warpBoss = false;
+  let equipU2Team = false;
+
+  update2Chars.forEach(c => {
+    const row = document.createElement("div");
+    row.className = "mod-row";
+    row.innerHTML = `
+      <label for="char-${c.id}">${c.name}</label>
+      <input type="checkbox" id="char-${c.id}" data-id="${c.id}">
+    `;
+    list.appendChild(row);
+  });
+
+  function getSaveKey(slot) {
+    const target = "fnafw" + slot;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.toLowerCase().endsWith(target)) return k;
+    }
+    return target;
+  }
+
+  function loadCurrentState() {
+    addTokens = 0;
+    addPartyLevels = 0;
+    warpBoss = false;
+    equipU2Team = false;
+
+    const key = getSaveKey(slotSelect.value);
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      statusEl.style.color = "#ffbe0b";
+      statusEl.textContent = "No save in " + key;
+      update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = false);
+      return;
+    }
+    statusEl.style.color = "#9ef01a";
+    statusEl.textContent = "Loaded " + key;
+
+    const sectionIdx = raw.lastIndexOf("[fnafw]");
+    const activeSection = sectionIdx !== -1 ? raw.slice(sectionIdx) : raw;
+    const tokens = activeSection.split("{@24}");
+
+    update2Chars.forEach(c => {
+      document.getElementById(`char-${c.id}`).checked = tokens.includes(`${c.id}have=1`);
+    });
+  }
+
+  btn.onclick = () => {
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+    loadCurrentState();
+  };
+
+  slotSelect.onchange = loadCurrentState;
+
+  document.getElementById("fnafw-unlock-all").onclick = () => {
+    update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = true);
+    statusEl.textContent = "All U2 selected (Click Save)";
+  };
+
+  document.getElementById("fnafw-equip-u2").onclick = () => {
+    update2Chars.forEach(c => document.getElementById(`char-${c.id}`).checked = true);
+    equipU2Team = true;
+    statusEl.textContent = "Will equip U2 to Party 1 & 2!";
+  };
+
+  document.getElementById("fnafw-tokens").onclick = () => {
+    addTokens += 999;
+    statusEl.textContent = `Queued +${addTokens} Tokens`;
+  };
+
+  document.getElementById("fnafw-lvl10").onclick = () => {
+    addPartyLevels += 10;
+    statusEl.textContent = `Queued +${addPartyLevels} Party Lvls`;
+  };
+
+  document.getElementById("fnafw-boss").onclick = () => {
+    warpBoss = true;
+    statusEl.textContent = "Queued Boss Warp (Save to apply)";
+  };
+
+  function setOrInsertToken(tokens, keyName, value, insertIdx) {
+    const prefix = keyName + "=";
+    const existingIdx = tokens.findIndex(t => t.startsWith(prefix));
+    if (existingIdx !== -1) {
+      tokens[existingIdx] = `${keyName}=${value}`;
+    } else {
+      tokens.splice(insertIdx, 0, `${keyName}=${value}`);
+    }
+  }
+
+  function getTokenInt(tokens, keyName, fallback = 0) {
+    const prefix = keyName + "=";
+    const found = tokens.find(t => t.startsWith(prefix));
+    if (!found) return fallback;
+    const num = parseInt(found.split("=")[1], 10);
+    return isNaN(num) ? fallback : num;
+  }
+
+  document.getElementById("fnafw-apply").onclick = () => {
+    const slot = slotSelect.value;
+    const key = getSaveKey(slot);
+    let raw = localStorage.getItem(key);
+
+    if (!raw) {
+      alert("Start a New Game in Slot " + slot + " first!");
+      return;
+    }
+
+    raw = raw.split(/\r?\n/);
+    const sectionIdx = raw.lastIndexOf("[fnafw]");
+    const beforeSection = sectionIdx !== -1 ? raw.slice(0, sectionIdx) : "";
+    const activeSection = sectionIdx !== -1 ? raw.slice(sectionIdx) : raw;
+
+    let tokens = activeSection.split("{@24}");
+    const headerPos = tokens.indexOf("[fnafw]");
+    const baseInsert = headerPos !== -1 ? headerPos + 1 : 1;
+
+    // 1. Update 2 Characters (ONLY write have=1 without malformed lv/xp keys to prevent party freeze)
+    tokens = tokens.filter(t => {
+      return !update2Chars.some(c =>
+        t === `${c.id}have=1` ||
+        t === `${c.id}have=0`
+      );
+    });
+
+    const additions = [];
+    update2Chars.forEach(c => {
+      if (document.getElementById(`char-${c.id}`).checked) {
+        additions.push(`${c.id}have=1`);
+      }
+    });
+    tokens.splice(baseInsert, 0, ...additions);
+
+    // 2. Equip Update 2 Team directly to s1..s8 (bypasses party-swap freeze completely)
+    if (equipU2Team) {
+      update2Chars.forEach((c, idx) => {
+        setOrInsertToken(tokens, `s${idx + 1}`, c.id, baseInsert);
+      });
+    }
+
+    // 3. +999 Faz-Tokens
+    if (addTokens > 0) {
+      const currentTokens = getTokenInt(tokens, "tokens", 0);
+      setOrInsertToken(tokens, "tokens", currentTokens + addTokens, baseInsert);
+    }
+
+    // 4. +10 Levels to current Party (s1..s8)
+    if (addPartyLevels > 0) {
+      for (let s = 1; s <= 8; s++) {
+        const charId = getTokenInt(tokens, `s${s}`, 0);
+        if (charId > 0) {
+          const curLv = Math.max(
+            getTokenInt(tokens, `${charId}lv`, 1),
+            getTokenInt(tokens, `lv${charId}`, 1)
+          );
+          const newLv = curLv + addPartyLevels;
+          setOrInsertToken(tokens, `${charId}lv`, newLv, baseInsert);
+          setOrInsertToken(tokens, `lv${charId}`, newLv, baseInsert);
+        }
+      }
+    }
+
+    // 5. Boss Warp (Halloween Backstage / Geist Lair)
+    if (warpBoss) {
+      setOrInsertToken(tokens, "portal", 1, baseInsert);
+      setOrInsertToken(tokens, "area", 6, baseInsert);
+      setOrInsertToken(tokens, "x", 1500, baseInsert);
+      setOrInsertToken(tokens, "y", 1100, baseInsert);
+    }
+
+    const updatedSave = beforeSection + tokens.join("{@24}");
+    origSetItem.call(localStorage, key, updatedSave);
+
+    lockSaveWrites = true;
+    statusEl.textContent = "Saved! Reloading...";
+    setTimeout(() => location.reload(), 200);
+  };
+})();
+</script>
+
 </body>
 </html>
-
-
-
-
-
-
